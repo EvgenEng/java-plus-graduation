@@ -6,6 +6,7 @@ spring:
     name: gateway-server
   cloud:
     config:
+      import: "optional:configserver:"
       enabled: true
     gateway:
       discovery:
