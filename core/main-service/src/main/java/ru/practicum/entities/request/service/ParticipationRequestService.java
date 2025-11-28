@@ -94,12 +94,14 @@ public class ParticipationRequestService {
         Event event = eventRepository.findById(participationRequest.getEvent().getId())
                 .orElseThrow(() -> new NotFoundException("Событие с id=" + participationRequest.getEvent().getId() + " не найдено"));
 
-        event.setConfirmedRequests(event.getConfirmedRequests() - 1);
-        eventRepository.save(event);
+        if (participationRequest.getStatus() == ParticipationRequestStatus.CONFIRMED) {
+            event.setConfirmedRequests(event.getConfirmedRequests() - 1);
+            eventRepository.save(event);
+        }
 
         participationRequest.setStatus(ParticipationRequestStatus.CANCELED);
-
         participationRequestRepository.save(participationRequest);
+
         return ParticipationRequestMapper.toParticipationRequestDto(participationRequest);
     }
 
@@ -189,11 +191,18 @@ public class ParticipationRequestService {
 
     // логика отклонения заявок
     private void rejectRequests(List<ParticipationRequest> participationRequestsToUpdate, Event event) {
-        participationRequestsToUpdate.forEach(participationRequest -> participationRequest.setStatus(ParticipationRequestStatus.REJECTED));
+        long confirmedRequestsToReject = participationRequestsToUpdate.stream()
+                .filter(pr -> pr.getStatus() == ParticipationRequestStatus.CONFIRMED)
+                .count();
+
+        participationRequestsToUpdate.forEach(participationRequest ->
+                participationRequest.setStatus(ParticipationRequestStatus.REJECTED));
         participationRequestRepository.saveAll(participationRequestsToUpdate);
 
-        event.setConfirmedRequests(event.getConfirmedRequests() - participationRequestsToUpdate.size());
-        eventRepository.save(event);
+        if (confirmedRequestsToReject > 0) {
+            event.setConfirmedRequests(event.getConfirmedRequests() - confirmedRequestsToReject);
+            eventRepository.save(event);
+        }
     }
 
     // логика формирования результата
