@@ -1,14 +1,71 @@
 services:
-  stats-server:
-    ports:
-      - "9090:9090"
-
+  # Базы данных (оставляем как есть)
   stats-db:
     image: postgres:16.1
-
-  ewm-service:
-    ports:
-      - "8080:8080"
+    # ... существующие настройки
 
   ewm-db:
     image: postgres:16.1
+    # ... существующие настройки
+
+  # Сервис обнаружения (Eureka)
+  discovery-server:
+    build: ./infra/discovery-server
+    image: ewm-discovery-server
+    container_name: "ewm-discovery-server"
+    ports:
+      - "8761:8761"
+    depends_on:
+      - stats-db
+      - ewm-db
+
+  # Сервер конфигураций (Native - конфиги внутри проекта)
+  config-server:
+    build: ./infra/config-server
+    image: ewm-config-server
+    container_name: "ewm-config-server"
+    ports:
+      - "8888:8888"
+    depends_on:
+      - discovery-server
+
+  # API Gateway
+  gateway-server:
+    build: ./infra/gateway-server
+    image: ewm-gateway-server
+    container_name: "ewm-gateway-server"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - config-server
+      - discovery-server
+    environment:
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+
+  # Сервис статистики
+  stats-server:
+    build: ./stats/stats-server
+    image: ewm-stats-server
+    container_name: "ewm-stats-server"
+    ports:
+      - "9090:9090"
+    depends_on:
+      - config-server
+      - discovery-server
+      - stats-db
+    environment:
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+
+  # Основной сервис
+  ewm-service:
+    build: ./core/main-service
+    image: ewm-main-service
+    container_name: "ewm-main-service"
+    ports:
+      - "8081:8081"
+    depends_on:
+      - config-server
+      - discovery-server
+      - ewm-db
+    environment:
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
