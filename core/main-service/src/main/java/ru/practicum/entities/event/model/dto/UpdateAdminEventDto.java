@@ -9,8 +9,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.validator.constraints.Length;
-import ru.practicum.entities.event.model.Location;
-import ru.practicum.entities.event.model.enums.EventAdminStateAction;
+import ru.practicum.dto.Location;
 import ru.practicum.utils.DateTimeConstants;
 
 import java.time.LocalDateTime;
@@ -45,5 +44,5 @@ public class UpdateAdminEventDto implements UpdateEventBaseDto {
     @Length(min = 3, max = 120)
     private String title;
 
-    private EventAdminStateAction stateAction;
+    private String stateAction;
 }

@@ -1,0 +1,67 @@
+package ru.practicum.service;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.dto.CategoryDto;
+import ru.practicum.mapper.CategoryMapper;
+import ru.practicum.model.Category;
+import ru.practicum.repository.CategoryRepository;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class CategoryService {
+    private final CategoryRepository categoryRepository;
+
+    public List<CategoryDto> getAllCategories(Integer from, Integer size) {
+        return categoryRepository.findAllCategories(from, size).stream()
+                .map(CategoryMapper::toCategoryDto)
+                .toList();
+    }
+
+    public CategoryDto getCategoryById(Long catId) {
+        Category category = categoryRepository.findById(catId)
+                .orElseThrow(() -> new ru.practicum.exception.NotFoundException(
+                        "Категория с id=" + catId + " не найдена"));
+        return CategoryMapper.toCategoryDto(category);
+    }
+
+    @Transactional
+    public CategoryDto createCategory(CategoryDto categoryDto) {
+        if (!categoryRepository.findByNameIgnoreCase(categoryDto.getName()).isEmpty()) {
+            throw new ru.practicum.exception.ConditionsNotMetException(
+                    "Категория с именем " + categoryDto.getName() + " уже существует");
+        }
+        Category category = CategoryMapper.toCategory(categoryDto);
+        return CategoryMapper.toCategoryDto(categoryRepository.save(category));
+    }
+
+    @Transactional
+    public void deleteCategory(Long catId) {
+        Category category = categoryRepository.findById(catId)
+                .orElseThrow(() -> new ru.practicum.exception.NotFoundException(
+                        "Категория с id=" + catId + " не найдена"));
+
+        // Здесь должна быть проверка на использование категории в событиях
+
+        categoryRepository.delete(category);
+    }
+
+    @Transactional
+    public CategoryDto updateCategory(Long id, CategoryDto categoryDto) {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new ru.practicum.exception.NotFoundException(
+                        "Категория с id=" + id + " не найдена"));
+
+        List<Category> existingCategories = categoryRepository.findByNameIgnoreCase(categoryDto.getName());
+        if (!existingCategories.isEmpty() && !existingCategories.get(0).getId().equals(id)) {
+            throw new ru.practicum.exception.ConditionsNotMetException(
+                    "Категория с именем " + categoryDto.getName() + " уже существует");
+        }
+
+        category.setName(categoryDto.getName());
+        return CategoryMapper.toCategoryDto(categoryRepository.save(category));
+    }
+}

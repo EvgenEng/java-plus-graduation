@@ -1,7 +1,6 @@
 package ru.practicum.entities.event.model.dto;
 
-import ru.practicum.entities.event.model.Location;
-
+import ru.practicum.dto.Location;
 import java.time.LocalDateTime;
 
 public interface UpdateEventBaseDto {

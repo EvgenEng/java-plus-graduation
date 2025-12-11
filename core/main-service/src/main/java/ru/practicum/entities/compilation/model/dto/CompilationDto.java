@@ -6,7 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import ru.practicum.entities.event.model.Event;
 
 import java.util.List;
 
@@ -23,5 +22,5 @@ public class CompilationDto {
 
     private Boolean pinned;
 
-    private List<Event> events;
+    private List<Long> eventIds;
 }

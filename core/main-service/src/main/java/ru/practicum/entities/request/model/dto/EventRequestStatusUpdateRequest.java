@@ -5,7 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import ru.practicum.entities.request.model.ParticipationRequestStatus;
 
 import java.util.List;
 
@@ -16,8 +15,8 @@ import java.util.List;
 public class EventRequestStatusUpdateRequest {
 
     @NotNull(message = "Список идентификаторов запросов не может быть null")
-    private List<Long> requestIds; // Список идентификаторов запросов на участие
+    private List<Long> requestIds;
 
     @NotNull(message = "Новый статус запроса не может быть null")
-    private ParticipationRequestStatus status; // Новый статус запроса (CONFIRMED или REJECTED)
+    private String status;
 }

@@ -10,8 +10,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import ru.practicum.entities.event.model.Location;
-import ru.practicum.entities.event.model.enums.EventUserStateAction;
+import ru.practicum.dto.Location;
 import ru.practicum.utils.DateTimeConstants;
 
 import java.time.LocalDateTime;
@@ -48,5 +47,5 @@ public class UpdateEventDto implements UpdateEventBaseDto {
     @Size(min = 3, max = 120, message = "Заголовок должен содержать от 3 до 120 символов")
     private String title;
 
-    private EventUserStateAction stateAction; // Действие пользователя (SEND_TO_REVIEW, CANCEL_REVIEW)
+    private String stateAction;
 }

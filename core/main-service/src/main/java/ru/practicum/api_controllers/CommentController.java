@@ -1,12 +1,10 @@
 package ru.practicum.api_controllers;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,17 +17,20 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import ru.practicum.client.CommentClient;
 import ru.practicum.entities.comment.model.CommentDto;
 import ru.practicum.entities.comment.model.CommentUpdateDto;
-import ru.practicum.entities.comment.service.CommentService;
 import ru.practicum.utils.DateTimeConstants;
 
+import java.time.LocalDateTime;
+import java.util.List;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @Validated
 public class CommentController {
-    private final CommentService commentService;
+    private final CommentClient commentClient;
 
     // Admin API
     // 1.1 Получение всех комментариев
@@ -40,14 +41,19 @@ public class CommentController {
             @PositiveOrZero @RequestParam(name = "from", defaultValue = "0") Integer from,
             @Positive @RequestParam(name = "size", defaultValue = "10") Integer size) {
 
-        List<CommentDto> comments = commentService.getComments(rangeStart, rangeEnd, from, size);
+        log.info("Получение всех комментариев через Feign: rangeStart={}, rangeEnd={}, from={}, size={}",
+                rangeStart, rangeEnd, from, size);
+
+        List<CommentDto> comments = commentClient.getAllCommentsForAdmin(rangeStart, rangeEnd, from, size);
         return ResponseEntity.ok(comments);
     }
 
     // 1.2 Удаление комментария администратором
     @DeleteMapping("/admin/comments/{commentId}")
     public ResponseEntity<Void> deleteCommentByAdmin(@PathVariable Long commentId) {
-        commentService.deleteAdminComment(commentId);
+        log.info("Удаление комментария администратором через Feign: ID={}", commentId);
+
+        commentClient.deleteCommentByAdmin(commentId);
         return ResponseEntity.noContent().build();
     }
 
@@ -61,7 +67,10 @@ public class CommentController {
             @PositiveOrZero @RequestParam(name = "from", defaultValue = "0") Integer from,
             @Positive @RequestParam(name = "size", defaultValue = "10") Integer size) {
 
-        List<CommentDto> comments = commentService.getCommentsByEventId(rangeStart, rangeEnd, eventId, from, size);
+        log.info("Получение комментариев по событию через Feign: eventId={}, rangeStart={}, rangeEnd={}",
+                eventId, rangeStart, rangeEnd);
+
+        List<CommentDto> comments = commentClient.getCommentsByEventId(eventId, rangeStart, rangeEnd, from, size);
         return ResponseEntity.ok(comments);
     }
 
@@ -75,7 +84,10 @@ public class CommentController {
             @PositiveOrZero @RequestParam(name = "from", defaultValue = "0") Integer from,
             @Positive @RequestParam(name = "size", defaultValue = "10") Integer size) {
 
-        List<CommentDto> comments = commentService.getCommentsByUserId(rangeStart, rangeEnd, userId, from, size);
+        log.info("Получение комментариев пользователя через Feign: userId={}, rangeStart={}, rangeEnd={}",
+                userId, rangeStart, rangeEnd);
+
+        List<CommentDto> comments = commentClient.getCommentsForUser(userId, rangeStart, rangeEnd, from, size);
         return ResponseEntity.ok(comments);
     }
 
@@ -86,7 +98,9 @@ public class CommentController {
             @PathVariable Long userId,
             @PathVariable Long eventId) {
 
-        CommentDto createdComment = commentService.addComment(userId, eventId, commentNewDto);
+        log.info("Создание комментария через Feign: userId={}, eventId={}", userId, eventId);
+
+        CommentDto createdComment = commentClient.createComment(commentNewDto, userId, eventId);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdComment);
     }
 
@@ -97,7 +111,9 @@ public class CommentController {
             @PathVariable Long userId,
             @PathVariable Long commentId) {
 
-        CommentDto updatedComment = commentService.updateComment(userId, commentId, commentUpdateDto);
+        log.info("Обновление комментария через Feign: userId={}, commentId={}", userId, commentId);
+
+        CommentDto updatedComment = commentClient.updateCommentByUser(commentUpdateDto, userId, commentId);
         return ResponseEntity.ok(updatedComment);
     }
 
@@ -107,7 +123,9 @@ public class CommentController {
             @PathVariable Long userId,
             @PathVariable Long commentId) {
 
-        commentService.deletePrivateComment(userId, commentId);
+        log.info("Удаление комментария пользователем через Feign: userId={}, commentId={}", userId, commentId);
+
+        commentClient.deleteCommentByUser(userId, commentId);
         return ResponseEntity.noContent().build();
     }
 }

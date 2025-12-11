@@ -1,12 +1,123 @@
 services:
-  # Базы данных (оставляем как есть)
+  # Базы данных
   stats-db:
     image: postgres:16.1
-    # ... существующие настройки
+    container_name: "stats-db"
+    environment:
+      POSTGRES_DB: ewm-stats
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+    ports:
+      - "6542:5432"
+    volumes:
+      - stats-data:/var/lib/postgresql/data
+    networks:
+      - ewm-network
 
   ewm-db:
     image: postgres:16.1
-    # ... существующие настройки
+    container_name: "ewm-db"
+    environment:
+      POSTGRES_DB: ewm-main
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+    ports:
+      - "6543:5432"
+    volumes:
+      - ewm-data:/var/lib/postgresql/data
+    networks:
+      - ewm-network
+
+  # База данных для User Service
+  user-db:
+    image: postgres:16.1
+    container_name: "user-db"
+    environment:
+      POSTGRES_DB: ewm-users
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+    ports:
+      - "6544:5432"
+    volumes:
+      - user-data:/var/lib/postgresql/data
+    networks:
+      - ewm-network
+
+  # База данных для Category Service
+  category-db:
+    image: postgres:16.1
+    container_name: "category-db"
+    environment:
+      POSTGRES_DB: ewm-categories
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+    ports:
+      - "6545:5432"
+    volumes:
+      - category-data:/var/lib/postgresql/data
+    networks:
+      - ewm-network
+
+  # База данных для Compilation Service
+  compilation-db:
+    image: postgres:16.1
+    container_name: "compilation-db"
+    environment:
+      POSTGRES_DB: ewm-compilations
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+    ports:
+      - "6546:5432"
+    volumes:
+      - compilation-data:/var/lib/postgresql/data
+    networks:
+      - ewm-network
+
+  # База данных для Comment Service
+  comment-db:
+    image: postgres:16.1
+    container_name: "comment-db"
+    environment:
+      POSTGRES_DB: ewm-comments
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+    ports:
+      - "6547:5432"
+    volumes:
+      - comment-data:/var/lib/postgresql/data
+    networks:
+      - ewm-network
+
+  # База данных для Request Service
+  request-db:
+    image: postgres:16.1
+    container_name: "request-db"
+    environment:
+      POSTGRES_DB: ewm-requests
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+    ports:
+      - "6548:5432"
+    volumes:
+      - request-data:/var/lib/postgresql/data
+    networks:
+      - ewm-network
+
+  # База данных для Event Service
+  event-db:
+    image: postgres:16.1
+    container_name: "event-db"
+    environment:
+      POSTGRES_DB: ewm-events
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+    ports:
+      - "6549:5432"
+    volumes:
+      - event-data:/var/lib/postgresql/data
+      - ./core/event-service/schema.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - ewm-network
 
   # Сервис обнаружения (Eureka)
   discovery-server:
@@ -18,8 +129,16 @@ services:
     depends_on:
       - stats-db
       - ewm-db
+      - user-db
+      - category-db
+      - compilation-db
+      - comment-db
+      - request-db
+      - event-db
+    networks:
+      - ewm-network
 
-  # Сервер конфигураций (Native - конфиги внутри проекта)
+  # Сервер конфигураций
   config-server:
     build: ./infra/config-server
     image: ewm-config-server
@@ -28,6 +147,8 @@ services:
       - "8888:8888"
     depends_on:
       - discovery-server
+    networks:
+      - ewm-network
 
   # API Gateway
   gateway-server:
@@ -41,6 +162,8 @@ services:
       - discovery-server
     environment:
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+    networks:
+      - ewm-network
 
   # Сервис статистики
   stats-server:
@@ -55,6 +178,8 @@ services:
       - stats-db
     environment:
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+    networks:
+      - ewm-network
 
   # Основной сервис
   ewm-service:
@@ -67,5 +192,151 @@ services:
       - config-server
       - discovery-server
       - ewm-db
+      - user-service
+      - category-service
+      - compilation-service
+      - comment-service
+      - request-service
+      - event-service
     environment:
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://ewm-db:5432/ewm-main
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=root
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+    networks:
+      - ewm-network
+
+  # User Service
+  user-service:
+    build: ./core/user-service
+    image: ewm-user-service
+    container_name: "ewm-user-service"
+    ports:
+      - "8082:8082"
+    depends_on:
+      - config-server
+      - discovery-server
+      - user-db
+    environment:
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://user-db:5432/ewm-users
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=root
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+    networks:
+      - ewm-network
+
+  # Category Service
+  category-service:
+    build: ./core/category-service
+    image: ewm-category-service
+    container_name: "ewm-category-service"
+    ports:
+      - "8083:8083"
+    depends_on:
+      - config-server
+      - discovery-server
+      - category-db
+    environment:
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://category-db:5432/ewm-categories
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=root
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+    networks:
+      - ewm-network
+
+  # Compilation Service
+  compilation-service:
+    build: ./core/compilation-service
+    image: ewm-compilation-service
+    container_name: "ewm-compilation-service"
+    ports:
+      - "8084:8084"
+    depends_on:
+      - config-server
+      - discovery-server
+      - compilation-db
+    environment:
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://compilation-db:5432/ewm-compilations
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=root
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+    networks:
+      - ewm-network
+
+  # Comment Service
+  comment-service:
+    build: ./core/comment-service
+    image: ewm-comment-service
+    container_name: "ewm-comment-service"
+    ports:
+      - "8085:8085"
+    depends_on:
+      - config-server
+      - discovery-server
+      - comment-db
+    environment:
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://comment-db:5432/ewm-comments
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=root
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+    networks:
+      - ewm-network
+
+  # Request Service
+  request-service:
+    build: ./core/request-service
+    image: ewm-request-service
+    container_name: "ewm-request-service"
+    ports:
+      - "8086:8086"
+    depends_on:
+      - config-server
+      - discovery-server
+      - request-db
+    environment:
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://request-db:5432/ewm-requests
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=root
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+    networks:
+      - ewm-network
+
+  # Event Service
+  event-service:
+    build: ./core/event-service
+    image: ewm-event-service
+    container_name: "ewm-event-service"
+    ports:
+      - "8087:8087"
+    depends_on:
+      - config-server
+      - discovery-server
+      - event-db
+    environment:
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://event-db:5432/ewm-events
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=root
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+    networks:
+      - ewm-network
+
+volumes:
+  stats-data:
+  ewm-data:
+  user-data:
+  category-data:
+  compilation-data:
+  comment-data:
+  request-data:
+  event-data:
+
+networks:
+  ewm-network:
+    driver: bridge

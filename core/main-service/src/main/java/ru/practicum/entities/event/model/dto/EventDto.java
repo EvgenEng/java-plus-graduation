@@ -1,16 +1,16 @@
 package ru.practicum.entities.event.model.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import ru.practicum.entities.event.model.Location;
-import ru.practicum.entities.event.model.enums.EventAdminStateAction;
-import ru.practicum.entities.event.model.enums.EventState;
-import ru.practicum.entities.event.model.enums.EventUserStateAction;
-import ru.practicum.entities.user.model.dto.UserDto;
+import ru.practicum.dto.Location;
 import ru.practicum.utils.DateTimeConstants;
 
 import java.time.LocalDateTime;
@@ -54,19 +54,19 @@ public class EventDto {
 
     private LocalDateTime createdOn;
 
-    private UserDto initiator;
+    private Long initiator;
 
     private Long confirmedRequests;
 
     private LocalDateTime publishedOn;
 
-    private EventState state;
+    private String state;
 
     private Long views;
 
-    private EventAdminStateAction adminStateAction;
+    private String adminStateAction;
 
-    private EventUserStateAction userStateAction;
+    private String userStateAction;
 
     private Long commentsCount;
 }
