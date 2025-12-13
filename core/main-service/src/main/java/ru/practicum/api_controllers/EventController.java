@@ -5,11 +5,19 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import ru.practicum.entities.event.model.dto.*;
-import ru.practicum.entities.event.model.enums.EventSearchOrder;
-import ru.practicum.entities.event.service.EventService;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import ru.practicum.api_controllers.service.EventService;
+import ru.practicum.dto.AdminEventSearch;
+import ru.practicum.dto.EventDto;
+import ru.practicum.dto.PublicEventSearch;
+import ru.practicum.dto.UpdateAdminEventDto;
+import ru.practicum.dto.UpdateEventDto;
 import ru.practicum.utils.DateTimeConstants;
 
 import java.time.LocalDateTime;
@@ -31,6 +39,7 @@ public class EventController {
             @RequestParam(required = false) @DateTimeFormat(pattern = DateTimeConstants.DATE_TIME_FORMAT) LocalDateTime rangeEnd,
             @RequestParam(defaultValue = "0") Integer from,
             @RequestParam(defaultValue = "10") Integer size) {
+
         AdminEventSearch search = AdminEventSearch.builder()
                 .users(users)
                 .states(states)
@@ -40,6 +49,7 @@ public class EventController {
                 .from(from)
                 .size(size)
                 .build();
+
         List<EventDto> events = eventService.searchAdmin(search);
         return ResponseEntity.ok(events);
     }
@@ -49,6 +59,7 @@ public class EventController {
     public ResponseEntity<EventDto> updateEventByAdmin(
             @PathVariable Long eventId,
             @Valid @RequestBody UpdateAdminEventDto updateRequest) {
+
         EventDto updatedEvent = eventService.updateByAdmin(eventId, updateRequest);
         return ResponseEntity.ok(updatedEvent);
     }
@@ -59,6 +70,7 @@ public class EventController {
             @PathVariable Long userId,
             @RequestParam(defaultValue = "0") Integer from,
             @RequestParam(defaultValue = "10") Integer size) {
+
         List<EventDto> events = eventService.findByUserId(userId, from, size);
         return ResponseEntity.ok(events);
     }
@@ -68,6 +80,7 @@ public class EventController {
     public ResponseEntity<EventDto> createEvent(
             @PathVariable Long userId,
             @Valid @RequestBody EventDto newEventDto) {
+
         EventDto createdEvent = eventService.create(userId, newEventDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdEvent);
     }
@@ -77,6 +90,7 @@ public class EventController {
     public ResponseEntity<EventDto> getEventByIdAndUser(
             @PathVariable Long userId,
             @PathVariable Long eventId) {
+
         EventDto event = eventService.findByIdAndUser(userId, eventId);
         return ResponseEntity.ok(event);
     }
@@ -87,6 +101,7 @@ public class EventController {
             @PathVariable Long userId,
             @PathVariable Long eventId,
             @Valid @RequestBody UpdateEventDto eventDto) {
+
         EventDto updatedEvent = eventService.updateByUser(userId, eventId, eventDto);
         return ResponseEntity.ok(updatedEvent);
     }
@@ -99,7 +114,7 @@ public class EventController {
             @RequestParam(required = false) Boolean paid,
             @RequestParam(required = false) @DateTimeFormat(pattern = DateTimeConstants.DATE_TIME_FORMAT) LocalDateTime rangeStart,
             @RequestParam(required = false) @DateTimeFormat(pattern = DateTimeConstants.DATE_TIME_FORMAT) LocalDateTime rangeEnd,
-            @RequestParam(defaultValue = "EVENT_DATE") EventSearchOrder sort,
+            @RequestParam(defaultValue = "EVENT_DATE") String sort,
             @RequestParam(defaultValue = "0") Integer from,
             @RequestParam(defaultValue = "10") Integer size) {
 
@@ -124,5 +139,4 @@ public class EventController {
         EventDto event = eventService.findById(eventId);
         return ResponseEntity.ok(event);
     }
-
 }
