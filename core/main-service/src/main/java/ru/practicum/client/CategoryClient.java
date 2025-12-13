@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
-import ru.practicum.entities.category.model.dto.CategoryDto;
+import ru.practicum.dto.CategoryDto;
 
 import java.util.List;
 

@@ -9,8 +9,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
-import ru.practicum.entities.comment.model.CommentDto;
-import ru.practicum.entities.comment.model.CommentUpdateDto;
+import ru.practicum.dto.CommentDto;
+import ru.practicum.dto.CommentUpdateDto;
 
 import java.time.LocalDateTime;
 import java.util.List;

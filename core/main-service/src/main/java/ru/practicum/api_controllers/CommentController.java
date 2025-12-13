@@ -18,8 +18,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ru.practicum.client.CommentClient;
-import ru.practicum.entities.comment.model.CommentDto;
-import ru.practicum.entities.comment.model.CommentUpdateDto;
+import ru.practicum.dto.CommentDto;
+import ru.practicum.dto.CommentUpdateDto;
 import ru.practicum.utils.DateTimeConstants;
 
 import java.time.LocalDateTime;

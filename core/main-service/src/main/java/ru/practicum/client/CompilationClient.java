@@ -8,9 +8,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
-import ru.practicum.entities.compilation.model.dto.CompilationDto;
-import ru.practicum.entities.compilation.model.dto.NewCompilationDto;
-import ru.practicum.entities.compilation.model.dto.UpdateCompilationRequest;
+import ru.practicum.dto.CompilationDto;
+import ru.practicum.dto.NewCompilationDto;
+import ru.practicum.dto.UpdateCompilationRequest;
 
 import java.util.List;
 

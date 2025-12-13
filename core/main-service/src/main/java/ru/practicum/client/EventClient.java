@@ -8,10 +8,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import ru.practicum.dto.EventDto;
 import ru.practicum.dto.EventInfoDto;
-import ru.practicum.entities.event.model.dto.EventDto;
-import ru.practicum.entities.event.model.dto.UpdateAdminEventDto;
-import ru.practicum.entities.event.model.dto.UpdateEventDto;
+import ru.practicum.dto.UpdateAdminEventDto;
+import ru.practicum.dto.UpdateEventDto;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -73,7 +73,7 @@ public interface EventClient {
     @GetMapping("/events/{eventId}")
     EventDto getEventById(@PathVariable("eventId") Long eventId);
 
-    // Internal API - теперь использует EventInfoDto из main-service
+    // Internal API
     @GetMapping("/internal/events/{eventId}/info")
     EventInfoDto getEventInfo(@PathVariable("eventId") Long eventId);
 

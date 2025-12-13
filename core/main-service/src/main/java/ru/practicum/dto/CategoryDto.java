@@ -1,4 +1,4 @@
-package ru.practicum.entities.category.model.dto;
+package ru.practicum.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -12,7 +12,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CategoryDto {
-
     private Long id;
 
     @NotBlank(message = "Название категории не должно быть пустым")

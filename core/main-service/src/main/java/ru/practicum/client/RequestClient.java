@@ -7,9 +7,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
-import ru.practicum.entities.request.model.dto.EventRequestStatusUpdateRequest;
-import ru.practicum.entities.request.model.dto.EventRequestStatusUpdateResult;
-import ru.practicum.entities.request.model.dto.ParticipationRequestDto;
+import ru.practicum.dto.EventRequestStatusUpdateRequest;
+import ru.practicum.dto.EventRequestStatusUpdateResult;
+import ru.practicum.dto.ParticipationRequestDto;
 
 import java.util.List;
 

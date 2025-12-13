@@ -13,9 +13,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ru.practicum.client.CompilationClient;
-import ru.practicum.entities.compilation.model.dto.CompilationDto;
-import ru.practicum.entities.compilation.model.dto.NewCompilationDto;
-import ru.practicum.entities.compilation.model.dto.UpdateCompilationRequest;
+import ru.practicum.dto.CompilationDto;
+import ru.practicum.dto.NewCompilationDto;
+import ru.practicum.dto.UpdateCompilationRequest;
 
 import java.util.List;
 

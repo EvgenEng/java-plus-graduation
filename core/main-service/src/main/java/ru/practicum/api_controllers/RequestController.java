@@ -14,9 +14,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ru.practicum.client.RequestClient;
-import ru.practicum.entities.request.model.dto.EventRequestStatusUpdateRequest;
-import ru.practicum.entities.request.model.dto.EventRequestStatusUpdateResult;
-import ru.practicum.entities.request.model.dto.ParticipationRequestDto;
+import ru.practicum.dto.EventRequestStatusUpdateRequest;
+import ru.practicum.dto.EventRequestStatusUpdateResult;
+import ru.practicum.dto.ParticipationRequestDto;
 
 import java.util.List;
 

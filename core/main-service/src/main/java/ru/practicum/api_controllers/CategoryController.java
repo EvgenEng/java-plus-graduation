@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ru.practicum.client.CategoryClient;
-import ru.practicum.entities.category.model.dto.CategoryDto;
+import ru.practicum.dto.CategoryDto;
 
 import java.util.List;
 

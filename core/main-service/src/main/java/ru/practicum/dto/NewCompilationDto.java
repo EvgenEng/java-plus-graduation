@@ -1,4 +1,4 @@
-package ru.practicum.entities.compilation.model.dto;
+package ru.practicum.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -7,20 +7,17 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Set;
+import java.util.List;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class NewCompilationDto {
-    private Long id;
-
-    @NotBlank(message = "Название подборки не может быть пустым")
+    @NotBlank(message = "Название подборки не должно быть пустым")
     @Size(min = 1, max = 50, message = "Название подборки должно содержать от 1 до 50 символов")
     private String title;
 
     private Boolean pinned;
-
-    private Set<Long> events;
+    private List<Long> events;
 }

@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ru.practicum.client.UserClient;
-import ru.practicum.entities.user.model.dto.UserDto;
+import ru.practicum.dto.UserDto;
 
 import java.util.List;
 
@@ -23,7 +23,6 @@ import java.util.List;
 public class UserController {
 
     private final UserClient userClient;
-    // private final UserService userService;
 
     @GetMapping("/users")
     public ResponseEntity<List<UserDto>> getUsers(

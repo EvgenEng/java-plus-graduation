@@ -3,9 +3,12 @@ package ru.practicum.api_controllers.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ru.practicum.client.EventClient;
-import ru.practicum.entities.event.model.dto.EventDto;
-import ru.practicum.entities.event.model.dto.UpdateAdminEventDto;
-import ru.practicum.entities.event.model.dto.UpdateEventDto;
+import ru.practicum.dto.AdminEventSearch;
+import ru.practicum.dto.EventDto;
+import ru.practicum.dto.EventInfoDto;
+import ru.practicum.dto.PublicEventSearch;
+import ru.practicum.dto.UpdateAdminEventDto;
+import ru.practicum.dto.UpdateEventDto;
 
 import java.util.List;
 
@@ -15,7 +18,7 @@ public class EventService {
 
     private final EventClient eventClient;
 
-    public List<EventDto> searchAdmin(ru.practicum.dto.AdminEventSearch search) {
+    public List<EventDto> searchAdmin(AdminEventSearch search) {
         return eventClient.getAdminEvents(
                 search.getUsers(),
                 search.getStates(),
@@ -47,14 +50,14 @@ public class EventService {
         return eventClient.updateEventByUser(userId, eventId, eventDto);
     }
 
-    public List<EventDto> searchCommon(ru.practicum.entities.event.model.dto.PublicEventSearch search) {
+    public List<EventDto> searchCommon(PublicEventSearch search) {
         return eventClient.searchEvents(
                 search.getText(),
                 search.getCategories(),
                 search.getPaid(),
                 search.getRangeStart(),
                 search.getRangeEnd(),
-                search.getSort().name(),
+                search.getSort(),
                 search.getFrom(),
                 search.getSize()
         );
@@ -65,7 +68,7 @@ public class EventService {
     }
 
     // Дополнительные методы для внутреннего использования
-    public ru.practicum.dto.EventInfoDto getEventInfo(Long eventId) {
+    public EventInfoDto getEventInfo(Long eventId) {
         return eventClient.getEventInfo(eventId);
     }
 
@@ -77,7 +80,7 @@ public class EventService {
         return eventClient.hasEventsWithCategory(categoryId);
     }
 
-    public List<ru.practicum.dto.EventInfoDto> getEventsInfoByIds(List<Long> eventIds) {
+    public List<EventInfoDto> getEventsInfoByIds(List<Long> eventIds) {
         return eventClient.getEventsInfoByIds(eventIds);
     }
 }
