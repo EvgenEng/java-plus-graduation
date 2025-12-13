@@ -28,7 +28,6 @@ services:
     networks:
       - ewm-network
 
-  # База данных для User Service
   user-db:
     image: postgres:16.1
     container_name: "user-db"
@@ -43,7 +42,6 @@ services:
     networks:
       - ewm-network
 
-  # База данных для Category Service
   category-db:
     image: postgres:16.1
     container_name: "category-db"
@@ -58,7 +56,6 @@ services:
     networks:
       - ewm-network
 
-  # База данных для Compilation Service
   compilation-db:
     image: postgres:16.1
     container_name: "compilation-db"
@@ -73,7 +70,6 @@ services:
     networks:
       - ewm-network
 
-  # База данных для Comment Service
   comment-db:
     image: postgres:16.1
     container_name: "comment-db"
@@ -88,7 +84,6 @@ services:
     networks:
       - ewm-network
 
-  # База данных для Request Service
   request-db:
     image: postgres:16.1
     container_name: "request-db"
@@ -103,7 +98,6 @@ services:
     networks:
       - ewm-network
 
-  # База данных для Event Service
   event-db:
     image: postgres:16.1
     container_name: "event-db"
@@ -171,7 +165,7 @@ services:
     image: ewm-stats-server
     container_name: "ewm-stats-server"
     ports:
-      - "9090:9090"
+      - "9090:9090"  # ЗАМЕНИТЬ с "9090:0" на "9090:9090"
     depends_on:
       - config-server
       - discovery-server
@@ -181,7 +175,7 @@ services:
     networks:
       - ewm-network
 
-  # Основной сервис
+  # Основной сервис - ИСПРАВЛЕНО: убраны лишние зависимости
   ewm-service:
     build: ./core/main-service
     image: ewm-main-service
@@ -191,18 +185,8 @@ services:
     depends_on:
       - config-server
       - discovery-server
-      - ewm-db
-      - user-service
-      - category-service
-      - compilation-service
-      - comment-service
-      - request-service
-      - event-service
     environment:
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://ewm-db:5432/ewm-main
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=root
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
     networks:
       - ewm-network
