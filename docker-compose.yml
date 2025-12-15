@@ -1,21 +1,5 @@
 services:
-  # 1. Сначала Eureka
-  discovery-server:
-    build: ./infra/discovery-server
-    image: ewm-discovery-server
-    container_name: "ewm-discovery-server"
-    ports:
-      - "8761:8761"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    networks:
-      - ewm-network
-
-  # 2. Базы данных
+  # 1. Базы данных для микросервисов
   stats-db:
     image: postgres:16.1
     container_name: "stats-db"
@@ -27,8 +11,6 @@ services:
       - "6542:5432"
     volumes:
       - stats-data:/var/lib/postgresql/data
-    networks:
-      - ewm-network
 
   user-db:
     image: postgres:16.1
@@ -41,8 +23,6 @@ services:
       - "6544:5432"
     volumes:
       - user-data:/var/lib/postgresql/data
-    networks:
-      - ewm-network
 
   category-db:
     image: postgres:16.1
@@ -55,8 +35,6 @@ services:
       - "6545:5432"
     volumes:
       - category-data:/var/lib/postgresql/data
-    networks:
-      - ewm-network
 
   compilation-db:
     image: postgres:16.1
@@ -69,8 +47,6 @@ services:
       - "6546:5432"
     volumes:
       - compilation-data:/var/lib/postgresql/data
-    networks:
-      - ewm-network
 
   comment-db:
     image: postgres:16.1
@@ -83,8 +59,6 @@ services:
       - "6547:5432"
     volumes:
       - comment-data:/var/lib/postgresql/data
-    networks:
-      - ewm-network
 
   request-db:
     image: postgres:16.1
@@ -97,8 +71,6 @@ services:
       - "6548:5432"
     volumes:
       - request-data:/var/lib/postgresql/data
-    networks:
-      - ewm-network
 
   event-db:
     image: postgres:16.1
@@ -111,269 +83,6 @@ services:
       - "6549:5432"
     volumes:
       - event-data:/var/lib/postgresql/data
-    networks:
-      - ewm-network
-
-  # 3. Config Server
-  config-server:
-    build: ./infra/config-server
-    image: ewm-config-server
-    container_name: "ewm-config-server"
-    ports:
-      - "8888:8888"
-    depends_on:
-      discovery-server:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - ewm-network
-
-  # 4. Все микросервисы
-  main-service:
-    build: ./core/main-service
-    image: ewm-main-service
-    container_name: "ewm-main-service"
-    ports:
-      - "8081:8081"
-    depends_on:
-      config-server:
-        condition: service_healthy
-      discovery-server:
-        condition: service_healthy
-    environment:
-      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    networks:
-      - ewm-network
-
-  user-service:
-    build: ./core/user-service
-    image: ewm-user-service
-    container_name: "ewm-user-service"
-    ports:
-      - "8082:8082"
-    depends_on:
-      config-server:
-        condition: service_healthy
-      discovery-server:
-        condition: service_healthy
-      user-db:
-        condition: service_started
-    environment:
-      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://user-db:5432/ewm-users
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=root
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    networks:
-      - ewm-network
-
-  category-service:
-    build: ./core/category-service
-    image: ewm-category-service
-    container_name: "ewm-category-service"
-    ports:
-      - "8083:8083"
-    depends_on:
-      config-server:
-        condition: service_healthy
-      discovery-server:
-        condition: service_healthy
-      category-db:
-        condition: service_started
-    environment:
-      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://category-db:5432/ewm-categories
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=root
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    networks:
-      - ewm-network
-
-  compilation-service:
-    build: ./core/compilation-service
-    image: ewm-compilation-service
-    container_name: "ewm-compilation-service"
-    ports:
-      - "8084:8084"
-    depends_on:
-      config-server:
-        condition: service_healthy
-      discovery-server:
-        condition: service_healthy
-      compilation-db:
-        condition: service_started
-    environment:
-      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://compilation-db:5432/ewm-compilations
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=root
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    networks:
-      - ewm-network
-
-  comment-service:
-    build: ./core/comment-service
-    image: ewm-comment-service
-    container_name: "ewm-comment-service"
-    ports:
-      - "8085:8085"
-    depends_on:
-      config-server:
-        condition: service_healthy
-      discovery-server:
-        condition: service_healthy
-      comment-db:
-        condition: service_started
-    environment:
-      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://comment-db:5432/ewm-comments
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=root
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    networks:
-      - ewm-network
-
-  request-service:
-    build: ./core/request-service
-    image: ewm-request-service
-    container_name: "ewm-request-service"
-    ports:
-      - "8086:8086"
-    depends_on:
-      config-server:
-        condition: service_healthy
-      discovery-server:
-        condition: service_healthy
-      request-db:
-        condition: service_started
-    environment:
-      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://request-db:5432/ewm-requests
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=root
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8086/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    networks:
-      - ewm-network
-
-  event-service:
-    build: ./core/event-service
-    image: ewm-event-service
-    container_name: "ewm-event-service"
-    ports:
-      - "8087:8087"
-    depends_on:
-      config-server:
-        condition: service_healthy
-      discovery-server:
-        condition: service_healthy
-      event-db:
-        condition: service_started
-    environment:
-      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://event-db:5432/ewm-events
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=root
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8087/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    networks:
-      - ewm-network
-
-  stats-server:
-    build: ./stats/stats-server
-    image: ewm-stats-server
-    container_name: "ewm-stats-server"
-    ports:
-      - "9090:9090"
-    depends_on:
-      config-server:
-        condition: service_healthy
-      discovery-server:
-        condition: service_healthy
-      stats-db:
-        condition: service_started
-    environment:
-      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9090/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    networks:
-      - ewm-network
-
-  # 5. Gateway Server
-  gateway-server:
-    build: ./infra/gateway-server
-    image: ewm-gateway-server
-    container_name: "ewm-gateway-server"
-    ports:
-      - "8080:8080"
-    depends_on:
-      config-server:
-        condition: service_healthy
-      discovery-server:
-        condition: service_healthy
-      main-service:
-        condition: service_healthy
-    environment:
-      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 10
-      start_period: 120s
-    networks:
-      - ewm-network
 
 volumes:
   stats-data:
@@ -383,7 +92,3 @@ volumes:
   comment-data:
   request-data:
   event-data:
-
-networks:
-  ewm-network:
-    driver: bridge
