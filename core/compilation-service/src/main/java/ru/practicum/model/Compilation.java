@@ -1,27 +1,18 @@
 package ru.practicum.model;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.util.HashSet;
 import java.util.Set;
 
-@Entity(name = "compilations")
-@Builder
+@Entity
+@Table(name = "compilations")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Compilation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,9 +25,9 @@ public class Compilation {
     @Builder.Default
     private Boolean pinned = false;
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "events_compilations",
-            joinColumns = @JoinColumn(name = "compilation_id"),
-            inverseJoinColumns = @JoinColumn(name = "event_id"))
-    private Set<Event> events;
+    @ElementCollection
+    @CollectionTable(name = "compilation_events", joinColumns = @JoinColumn(name = "compilation_id"))
+    @Column(name = "event_id")
+    @Builder.Default
+    private Set<Long> eventIds = new HashSet<>();
 }

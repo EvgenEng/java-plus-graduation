@@ -1,13 +1,4 @@
--- Таблица событий
-CREATE TABLE IF NOT EXISTS events
-(
-    id BIGINT PRIMARY KEY,
-    title VARCHAR(120) NOT NULL,
-    annotation VARCHAR(2000) NOT NULL,
-    event_date TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    paid BOOLEAN DEFAULT FALSE,
-    state VARCHAR(50) NOT NULL
-    );
+DROP TABLE IF EXISTS events;
 
 -- Таблица подборок
 CREATE TABLE IF NOT EXISTS compilations
@@ -17,18 +8,25 @@ CREATE TABLE IF NOT EXISTS compilations
     pinned BOOLEAN DEFAULT FALSE
     );
 
--- Связующая таблица
-CREATE TABLE IF NOT EXISTS events_compilations
+DROP TABLE IF EXISTS events_compilations;
+
+CREATE TABLE IF NOT EXISTS compilation_events
 (
     compilation_id BIGINT NOT NULL,
     event_id BIGINT NOT NULL,
 
-    CONSTRAINT fk_compilation FOREIGN KEY (compilation_id) REFERENCES compilations(id) ON DELETE CASCADE,
-    CONSTRAINT fk_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
-    CONSTRAINT pk_events_compilations PRIMARY KEY (compilation_id, event_id)
+    CONSTRAINT fk_compilation
+    FOREIGN KEY (compilation_id)
+    REFERENCES compilations(id)
+    ON DELETE CASCADE,
+
+    CONSTRAINT pk_compilation_events
+    PRIMARY KEY (compilation_id, event_id)
     );
 
 -- Индексы
 CREATE INDEX IF NOT EXISTS idx_compilations_title ON compilations(title);
-CREATE INDEX IF NOT EXISTS idx_events_compilations_compilation_id ON events_compilations(compilation_id);
-CREATE INDEX IF NOT EXISTS idx_events_compilations_event_id ON events_compilations(event_id);
+CREATE INDEX IF NOT EXISTS idx_compilation_events_compilation_id
+    ON compilation_events(compilation_id);
+CREATE INDEX IF NOT EXISTS idx_compilation_events_event_id
+    ON compilation_events(event_id);

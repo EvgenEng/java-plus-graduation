@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
 import java.util.Set;
 
 @Data
@@ -22,5 +23,5 @@ public class NewCompilationDto {
 
     private Boolean pinned;
 
-    private Set<Long> events;
+    private List<Long> events;
 }
