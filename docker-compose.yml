@@ -1,5 +1,18 @@
 services:
-  # 1. Базы данных для микросервисов
+  # ОДНА БД для всех микросервисов
+  ewm-db:
+    image: postgres:16.1
+    container_name: "ewm-main-db"
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+    ports:
+      - "5432:5432"
+    volumes:
+      - ewm-data:/var/lib/postgresql/data
+
+  # БД для статистики (отдельно)
   stats-db:
     image: postgres:16.1
     container_name: "stats-db"
@@ -12,97 +25,6 @@ services:
     volumes:
       - stats-data:/var/lib/postgresql/data
 
-  user-db:
-    image: postgres:16.1
-    container_name: "user-db"
-    environment:
-      POSTGRES_DB: ewm-users
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
-    ports:
-      - "6544:5432"
-    volumes:
-      - user-data:/var/lib/postgresql/data
-
-  category-db:
-    image: postgres:16.1
-    container_name: "category-db"
-    environment:
-      POSTGRES_DB: ewm-categories
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
-    ports:
-      - "6545:5432"
-    volumes:
-      - category-data:/var/lib/postgresql/data
-
-  compilation-db:
-    image: postgres:16.1
-    container_name: "compilation-db"
-    environment:
-      POSTGRES_DB: ewm-compilations
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
-    ports:
-      - "6546:5432"
-    volumes:
-      - compilation-data:/var/lib/postgresql/data
-
-  comment-db:
-    image: postgres:16.1
-    container_name: "comment-db"
-    environment:
-      POSTGRES_DB: ewm-comments
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
-    ports:
-      - "6547:5432"
-    volumes:
-      - comment-data:/var/lib/postgresql/data
-
-  request-db:
-    image: postgres:16.1
-    container_name: "request-db"
-    environment:
-      POSTGRES_DB: ewm-requests
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
-    ports:
-      - "6548:5432"
-    volumes:
-      - request-data:/var/lib/postgresql/data
-
-  event-db:
-    image: postgres:16.1
-    container_name: "event-db"
-    environment:
-      POSTGRES_DB: ewm-events
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
-    ports:
-      - "6549:5432"
-    volumes:
-      - event-data:/var/lib/postgresql/data
-
-  # 2. БАЗА ДЛЯ MAIN-SERVICE!
-  main-db:
-    image: postgres:16.1
-    container_name: "main-db"
-    environment:
-      POSTGRES_DB: ewm-main
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
-    ports:
-      - "6543:5432"
-    volumes:
-      - main-data:/var/lib/postgresql/data
-
 volumes:
+  ewm-data:
   stats-data:
-  user-data:
-  category-data:
-  compilation-data:
-  comment-data:
-  request-data:
-  event-data:
-  main-data:
