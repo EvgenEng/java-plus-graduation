@@ -84,6 +84,19 @@ services:
     volumes:
       - event-data:/var/lib/postgresql/data
 
+  # 2. БАЗА ДЛЯ MAIN-SERVICE!
+  main-db:
+    image: postgres:16.1
+    container_name: "main-db"
+    environment:
+      POSTGRES_DB: ewm-main
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+    ports:
+      - "6543:5432"
+    volumes:
+      - main-data:/var/lib/postgresql/data
+
 volumes:
   stats-data:
   user-data:
@@ -92,3 +105,4 @@ volumes:
   comment-data:
   request-data:
   event-data:
+  main-data:
