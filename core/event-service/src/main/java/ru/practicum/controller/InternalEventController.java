@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ru.practicum.dto.EventInfoDto;
+import ru.practicum.dto.EventShortDto;
 import ru.practicum.service.EventService;
 
 import java.util.List;
@@ -41,5 +42,17 @@ public class InternalEventController {
     public List<EventInfoDto> getEventsInfoByIds(@RequestParam List<Long> eventIds) {
         log.debug("Получение информации о событиях: eventIds={}", eventIds);
         return eventService.getEventsInfoByIds(eventIds);
+    }
+
+    @GetMapping("/events/short")
+    public List<EventShortDto> getEventsShortByIds(@RequestParam List<Long> eventIds) {
+        log.debug("Получение краткой информации о событиях: eventIds={}", eventIds);
+        return eventService.getEventsShortByIds(eventIds);
+    }
+
+    @GetMapping("/events/exists")
+    public List<Long> getExistingEventIds(@RequestParam List<Long> eventIds) {
+        log.debug("Проверка существования событий по списку ID: eventIds={}", eventIds);
+        return eventService.getExistingEventIds(eventIds);
     }
 }

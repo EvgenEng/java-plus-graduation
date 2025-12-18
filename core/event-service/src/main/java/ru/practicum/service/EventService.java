@@ -4,12 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.dto.AdminEventSearch;
-import ru.practicum.dto.EventDto;
-import ru.practicum.dto.EventInfoDto;
-import ru.practicum.dto.PublicEventSearch;
-import ru.practicum.dto.UpdateAdminEventDto;
-import ru.practicum.dto.UpdateEventDto;
+import ru.practicum.dto.*;
 import ru.practicum.exception.AccessDeniedException;
 import ru.practicum.exception.ConditionsNotMetException;
 import ru.practicum.exception.DateValidationException;
@@ -216,6 +211,31 @@ public class EventService {
                         .paid(event.getPaid())
                         .requestModeration(event.getRequestModeration())
                         .build())
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<EventShortDto> getEventsShortByIds(List<Long> eventIds) {
+        List<Event> events = eventRepository.findAllByIdIn(eventIds);
+
+        return events.stream()
+                .map(event -> EventShortDto.builder()
+                        .id(event.getId())
+                        .title(event.getTitle())
+                        .annotation(event.getAnnotation())
+                        .eventDate(event.getEventDate())
+                        .paid(event.getPaid())
+                        .state(event.getState())
+                        .views(event.getViews())
+                        .confirmedRequests(event.getConfirmedRequests())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<Long> getExistingEventIds(List<Long> eventIds) {
+        return eventRepository.findAllById(eventIds).stream()
+                .map(Event::getId)
                 .collect(Collectors.toList());
     }
 
