@@ -1,23 +1,102 @@
+server:
+  port: 8080
+
 spring:
   application:
     name: gateway-server
-  config:
-    import: "configserver:"
+  main:
+    web-application-type: reactive
   cloud:
-    config:
-      fail-fast: true
-      retry:
-        useRandomPolicy: true
-        max-interval: 6000
+    gateway:
       discovery:
-        enabled: true
-        serviceId: config-server
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        # Публичные маршруты
+        - id: events-public
+          uri: lb://event-service
+          predicates:
+            - Path=/events/**
+          filters:
+            - StripPrefix=0
+
+        - id: categories-public
+          uri: lb://category-service
+          predicates:
+            - Path=/categories/**
+          filters:
+            - StripPrefix=0
+
+        - id: compilations-public
+          uri: lb://compilation-service
+          predicates:
+            - Path=/compilations/**
+          filters:
+            - StripPrefix=0
+
+        - id: users-public
+          uri: lb://user-service
+          predicates:
+            - Path=/users/**
+            - Method=POST
+          filters:
+            - StripPrefix=0
+
+        # Приватные маршруты (нужна аутентификация)
+        - id: events-private
+          uri: lb://event-service
+          predicates:
+            - Path=/users/*/events/**
+          filters:
+            - StripPrefix=1
+
+        - id: requests-private
+          uri: lb://request-service
+          predicates:
+            - Path=/users/*/requests/**, /users/*/events/*/requests/**
+          filters:
+            - StripPrefix=1
+
+        # Админские маршруты
+        - id: admin-events
+          uri: lb://event-service
+          predicates:
+            - Path=/admin/events/**
+          filters:
+            - StripPrefix=1
+
+        - id: admin-users
+          uri: lb://user-service
+          predicates:
+            - Path=/admin/users/**
+          filters:
+            - StripPrefix=1
+
+        - id: admin-categories
+          uri: lb://category-service
+          predicates:
+            - Path=/admin/categories/**
+          filters:
+            - StripPrefix=1
 
 eureka:
   client:
-    serviceUrl:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
-  instance:
-    preferIpAddress: true
-    instance-id: "${spring.application.name}:${random.value}"
-    leaseRenewalIntervalInSeconds: 10
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.cloud.client.discovery: DEBUG
