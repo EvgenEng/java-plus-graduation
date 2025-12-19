@@ -1,29 +1,44 @@
 services:
-  # ОДНА БД для всех микросервисов
   ewm-db:
     image: postgres:16.1
     container_name: "ewm-main-db"
     environment:
-      POSTGRES_DB: postgres
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
+      POSTGRES_DB: ewm_main_db
+      POSTGRES_USER: ewm_user
+      POSTGRES_PASSWORD: ewm_password
     ports:
       - "5432:5432"
     volumes:
       - ewm-data:/var/lib/postgresql/data
+      - ./core/user-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-user-schema.sql
+      - ./core/category-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/02-category-schema.sql
+      - ./core/event-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/03-event-schema.sql
+      - ./core/request-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/04-request-schema.sql
+      - ./core/compilation-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/05-compilation-schema.sql
+      - ./core/comment-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/06-comment-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ewm_user -d ewm_main_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # БД для статистики (отдельно)
   stats-db:
     image: postgres:16.1
     container_name: "stats-db"
     environment:
-      POSTGRES_DB: ewm-stats
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
+      POSTGRES_DB: ewm_stats_db
+      POSTGRES_USER: stat_user
+      POSTGRES_PASSWORD: stat_password
     ports:
       - "6542:5432"
     volumes:
       - stats-data:/var/lib/postgresql/data
+      - ./stats/stats-server/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-stats-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stat_user -d ewm_stats_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   ewm-data:
