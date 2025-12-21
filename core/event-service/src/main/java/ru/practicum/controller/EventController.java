@@ -6,9 +6,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import ru.practicum.dto.AdminEventSearch;
 import ru.practicum.dto.EventDto;
+import ru.practicum.dto.NewEventDto;
 import ru.practicum.dto.PublicEventSearch;
 import ru.practicum.dto.UpdateAdminEventDto;
 import ru.practicum.dto.UpdateEventDto;
@@ -79,11 +86,23 @@ public class EventController {
     @PostMapping("/users/{userId}/events")
     public ResponseEntity<EventDto> createEvent(
             @PathVariable Long userId,
-            @Valid @RequestBody EventDto newEventDto) {
+            @Valid @RequestBody NewEventDto newEventDto) {
 
-        log.info("Создание события пользователем: userId={}", userId);
+        log.info("Создание события пользователем: userId={}, newEventDto={}", userId, newEventDto);
 
-        EventDto createdEvent = eventService.create(userId, newEventDto);
+        EventDto eventDto = EventDto.builder()
+                .annotation(newEventDto.getAnnotation())
+                .category(newEventDto.getCategory())
+                .description(newEventDto.getDescription())
+                .eventDate(newEventDto.getEventDate())
+                .location(newEventDto.getLocation())
+                .paid(newEventDto.getPaid())
+                .participantLimit(newEventDto.getParticipantLimit())
+                .requestModeration(newEventDto.getRequestModeration())
+                .title(newEventDto.getTitle())
+                .build();
+
+        EventDto createdEvent = eventService.create(userId, eventDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdEvent);
     }
 
@@ -104,7 +123,7 @@ public class EventController {
     public ResponseEntity<EventDto> updateEventByUser(
             @PathVariable Long userId,
             @PathVariable Long eventId,
-            @Valid @RequestBody UpdateEventDto eventDto) {  // Здесь используется UpdateEventDto
+            @Valid @RequestBody UpdateEventDto eventDto) {
 
         log.info("Обновление события пользователем: userId={}, eventId={}", userId, eventId);
 

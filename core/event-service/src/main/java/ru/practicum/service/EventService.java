@@ -4,7 +4,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.dto.*;
+import ru.practicum.dto.AdminEventSearch;
+import ru.practicum.dto.EventDto;
+import ru.practicum.dto.EventInfoDto;
+import ru.practicum.dto.EventShortDto;
+import ru.practicum.dto.NewEventDto;
+import ru.practicum.dto.PublicEventSearch;
+import ru.practicum.dto.UpdateAdminEventDto;
+import ru.practicum.dto.UpdateEventDto;
 import ru.practicum.exception.AccessDeniedException;
 import ru.practicum.exception.ConditionsNotMetException;
 import ru.practicum.exception.DateValidationException;
@@ -73,18 +80,31 @@ public class EventService {
     }
 
     @Transactional
-    public EventDto create(Long userId, EventDto newEventDto) {
+    public EventDto create(Long userId, NewEventDto newEventDto) {
         validateEventDateForCreate(newEventDto.getEventDate());
 
         Event event = EventMapper.toEvent(newEventDto, userId);
-        event.setInitiatorId(userId);
-        event.setState(EventState.PENDING.toString());
-        event.setCreatedOn(LocalDateTime.now());
-        event.setConfirmedRequests(0L);
-        event.setViews(0L);
-
         Event savedEvent = eventRepository.save(event);
+
         return EventMapper.toEventDto(savedEvent);
+    }
+
+    @Transactional
+    public EventDto create(Long userId, EventDto eventDto) {
+        // Преобразуем EventDto в NewEventDto
+        NewEventDto newEventDto = NewEventDto.builder()
+                .annotation(eventDto.getAnnotation())
+                .category(eventDto.getCategory())
+                .description(eventDto.getDescription())
+                .eventDate(eventDto.getEventDate())
+                .location(eventDto.getLocation())
+                .paid(eventDto.getPaid())
+                .participantLimit(eventDto.getParticipantLimit())
+                .requestModeration(eventDto.getRequestModeration())
+                .title(eventDto.getTitle())
+                .build();
+
+        return create(userId, newEventDto);
     }
 
     @Transactional(readOnly = true)

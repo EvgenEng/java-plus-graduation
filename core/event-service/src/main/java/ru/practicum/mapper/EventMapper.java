@@ -5,6 +5,7 @@ import lombok.NoArgsConstructor;
 import ru.practicum.dto.EventDto;
 import ru.practicum.dto.EventInfoDto;
 import ru.practicum.dto.Location;
+import ru.practicum.dto.NewEventDto;
 import ru.practicum.model.Event;
 
 import java.time.LocalDateTime;
@@ -62,6 +63,28 @@ public class EventMapper {
                 .annotation(eventDto.getAnnotation())
                 .eventDate(eventDto.getEventDate())
                 .description(eventDto.getDescription())
+                .createdOn(LocalDateTime.now())
+                .state("PENDING")
+                .confirmedRequests(0L)
+                .views(0L)
+                .build();
+    }
+
+    public static Event toEvent(NewEventDto newEventDto, Long initiatorId) {
+        return Event.builder()
+                .initiatorId(initiatorId)
+                .categoryId(newEventDto.getCategory())
+                .title(newEventDto.getTitle())
+                .paid(newEventDto.getPaid() != null ? newEventDto.getPaid() : false)
+                .requestModeration(newEventDto.getRequestModeration() != null ?
+                        newEventDto.getRequestModeration() : true)
+                .participantLimit(newEventDto.getParticipantLimit() != null ?
+                        newEventDto.getParticipantLimit() : 0L)
+                .lon(newEventDto.getLocation().getLon())
+                .lat(newEventDto.getLocation().getLat())
+                .annotation(newEventDto.getAnnotation())
+                .eventDate(newEventDto.getEventDate())
+                .description(newEventDto.getDescription())
                 .createdOn(LocalDateTime.now())
                 .state("PENDING")
                 .confirmedRequests(0L)

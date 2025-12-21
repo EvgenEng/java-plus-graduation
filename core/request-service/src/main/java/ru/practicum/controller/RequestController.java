@@ -10,25 +10,24 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ru.practicum.dto.EventRequestStatusUpdateRequest;
 import ru.practicum.dto.EventRequestStatusUpdateResult;
 import ru.practicum.dto.ParticipationRequestDto;
+import ru.practicum.dto.NewRequestDto;
 import ru.practicum.service.ParticipationRequestService;
 
 import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/users/{userId}")
 @RequiredArgsConstructor
 public class RequestController {
     private final ParticipationRequestService participationRequestService;
 
     // Получение всех заявок на участие в событии текущего пользователя
-    @GetMapping("/events/{eventId}/requests")
+    @GetMapping("/users/{userId}/events/{eventId}/requests")
     public ResponseEntity<List<ParticipationRequestDto>> getAllRequestsByEventAndInitiator(
             @PathVariable Long userId,
             @PathVariable Long eventId) {
@@ -41,7 +40,7 @@ public class RequestController {
     }
 
     // Изменение статуса заявок на участие в событии
-    @PatchMapping("/events/{eventId}/requests")
+    @PatchMapping("/users/{userId}/events/{eventId}/requests")
     public ResponseEntity<EventRequestStatusUpdateResult> updateParticipationRequestStatus(
             @PathVariable Long userId,
             @PathVariable Long eventId,
@@ -55,8 +54,9 @@ public class RequestController {
     }
 
     // Получение всех заявок пользователя на участие в событиях
-    @GetMapping("/requests")
-    public ResponseEntity<List<ParticipationRequestDto>> getAllRequestsByUser(@PathVariable Long userId) {
+    @GetMapping("/users/{userId}/requests")
+    public ResponseEntity<List<ParticipationRequestDto>> getAllRequestsByUser(
+            @PathVariable Long userId) {
 
         log.info("Получение всех заявок пользователя: userId={}", userId);
 
@@ -65,19 +65,30 @@ public class RequestController {
     }
 
     // Создание заявки на участие в событии
-    @PostMapping("/requests")
+    @PostMapping("/users/{userId}/requests")
     public ResponseEntity<ParticipationRequestDto> createParticipationRequest(
             @PathVariable Long userId,
-            @RequestParam Long eventId) {
+            @RequestParam(required = false) Long eventId,
+            @RequestBody(required = false) NewRequestDto requestDto) {
 
-        log.info("Создание заявки на участие: userId={}, eventId={}", userId, eventId);
+        log.info("Создание заявки на участие: userId={}, eventId={}, requestDto={}",
+                userId, eventId, requestDto);
 
-        ParticipationRequestDto request = participationRequestService.create(userId, eventId);
+        Long finalEventId = eventId;
+        if (finalEventId == null && requestDto != null && requestDto.getEventId() != null) {
+            finalEventId = requestDto.getEventId();
+        }
+
+        if (finalEventId == null) {
+            throw new IllegalArgumentException("eventId должен быть указан");
+        }
+
+        ParticipationRequestDto request = participationRequestService.create(userId, finalEventId);
         return ResponseEntity.status(HttpStatus.CREATED).body(request);
     }
 
     // Отмена заявки на участие в событии
-    @PatchMapping("/requests/{requestId}/cancel")
+    @PatchMapping("/users/{userId}/requests/{requestId}/cancel")
     public ResponseEntity<ParticipationRequestDto> cancelParticipationRequest(
             @PathVariable Long userId,
             @PathVariable Long requestId) {
