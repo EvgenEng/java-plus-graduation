@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.dto.CategoryDto;
+import ru.practicum.exception.ConflictException;
+import ru.practicum.exception.EntityNotFoundException;
 import ru.practicum.mapper.CategoryMapper;
 import ru.practicum.model.Category;
 import ru.practicum.repository.CategoryRepository;
@@ -23,7 +25,7 @@ public class CategoryService {
 
     public CategoryDto getCategoryById(Long catId) {
         Category category = categoryRepository.findById(catId)
-                .orElseThrow(() -> new ru.practicum.exception.NotFoundException(
+                .orElseThrow(() -> new EntityNotFoundException(
                         "Категория с id=" + catId + " не найдена"));
         return CategoryMapper.toCategoryDto(category);
     }
@@ -31,9 +33,10 @@ public class CategoryService {
     @Transactional
     public CategoryDto createCategory(CategoryDto categoryDto) {
         if (!categoryRepository.findByNameIgnoreCase(categoryDto.getName()).isEmpty()) {
-            throw new ru.practicum.exception.ConditionsNotMetException(
+            throw new ConflictException(
                     "Категория с именем " + categoryDto.getName() + " уже существует");
         }
+
         Category category = CategoryMapper.toCategory(categoryDto);
         return CategoryMapper.toCategoryDto(categoryRepository.save(category));
     }
@@ -41,10 +44,8 @@ public class CategoryService {
     @Transactional
     public void deleteCategory(Long catId) {
         Category category = categoryRepository.findById(catId)
-                .orElseThrow(() -> new ru.practicum.exception.NotFoundException(
+                .orElseThrow(() -> new EntityNotFoundException(
                         "Категория с id=" + catId + " не найдена"));
-
-        // Здесь должна быть проверка на использование категории в событиях
 
         categoryRepository.delete(category);
     }
@@ -52,12 +53,12 @@ public class CategoryService {
     @Transactional
     public CategoryDto updateCategory(Long id, CategoryDto categoryDto) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new ru.practicum.exception.NotFoundException(
+                .orElseThrow(() -> new EntityNotFoundException(
                         "Категория с id=" + id + " не найдена"));
 
         List<Category> existingCategories = categoryRepository.findByNameIgnoreCase(categoryDto.getName());
         if (!existingCategories.isEmpty() && !existingCategories.get(0).getId().equals(id)) {
-            throw new ru.practicum.exception.ConditionsNotMetException(
+            throw new ConflictException(
                     "Категория с именем " + categoryDto.getName() + " уже существует");
         }
 

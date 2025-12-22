@@ -112,16 +112,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ErrorResponseDto> handleConflict(ConflictException ex) {
-        log.warn("Conflict: {}", ex.getMessage());
-
         ErrorResponseDto error = ErrorResponseDto.builder()
-                .status("error")
+                .status("CONFLICT")
                 .error("Conflict")
                 .message(ex.getMessage())
                 .timestamp(LocalDateTime.now())
-                .statusCode(HttpStatus.CONFLICT.value())
                 .build();
-
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 

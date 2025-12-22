@@ -3,6 +3,7 @@ package ru.practicum.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ru.practicum.dto.UserDto;
+import ru.practicum.exception.ConflictException;
 import ru.practicum.mapper.UserMapper;
 import ru.practicum.model.User;
 import ru.practicum.repository.UserRepository;
@@ -24,8 +25,7 @@ public class UserService {
     public UserDto create(UserDto user) {
         Optional<User> userByEmail = userRepository.findByEmail(user.getEmail());
         if (userByEmail.isPresent()) {
-            throw new ru.practicum.exception.ConditionsNotMetException(
-                    "Пользователь с таким email уже существует");
+            throw new ConflictException("Пользователь с таким email уже существует");
         }
         return UserMapper.toUserDto(
                 userRepository.save(UserMapper.toUser(user))
