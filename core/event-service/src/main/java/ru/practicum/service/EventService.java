@@ -160,25 +160,52 @@ public class EventService {
 
     @Transactional(readOnly = true)
     public List<EventDto> searchCommon(PublicEventSearch search) {
-        try {
-            validateDateRange(search.getRangeStart(), search.getRangeEnd());
+        log.info("Поиск событий с фильтрами: {}", search);
 
-            PageRequest pageRequest = PageRequest.of(search.getFrom() / search.getSize(), search.getSize());
+        try {
+            // 1ю Проверяем search на null
+            if (search == null) {
+                log.warn("PublicEventSearch is null");
+                return Collections.emptyList();
+            }
+
+            // 2. Проверяем пагинационные параметры
+            Integer from = search.getFrom() != null ? search.getFrom() : 0;
+            Integer size = search.getSize() != null ? search.getSize() : 10;
+
+            // 3. Проверяем диапазон дат
+            if (search.getRangeStart() != null && search.getRangeEnd() != null) {
+                validateDateRange(search.getRangeStart(), search.getRangeEnd());
+            }
+
             List<Event> events = eventRepository.findCommonEventsByFilters(search);
 
-            // Увеличиваем счетчик просмотров для каждого события
-            events.forEach(e -> {
-                e.setViews(e.getViews() + 1);
-                eventRepository.save(e);
-            });
+            if (!events.isEmpty()) {
+                incrementViewsForEvents(events);
+            }
 
             return events.stream()
                     .map(EventMapper::toEventDto)
                     .collect(Collectors.toList());
 
         } catch (Exception e) {
-            log.error("Ошибка поиска событий", e);
+            log.error("Ошибка поиска событий: {}", e.getMessage(), e);
             return Collections.emptyList();
+        }
+    }
+
+    @Transactional
+    public void incrementViewsForEvents(List<Event> events) {
+        try {
+            List<Long> eventIds = events.stream()
+                    .map(Event::getId)
+                    .collect(Collectors.toList());
+
+            // Обновляем просмотры одним запросом
+            eventRepository.incrementViewsForEvents(eventIds);
+
+        } catch (Exception e) {
+            log.error("Ошибка увеличения просмотров: {}", e.getMessage());
         }
     }
 

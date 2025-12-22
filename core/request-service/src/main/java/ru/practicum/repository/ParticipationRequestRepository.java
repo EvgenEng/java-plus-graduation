@@ -24,4 +24,21 @@ public interface ParticipationRequestRepository extends JpaRepository<Participat
 
     @Query("SELECT pr FROM ParticipationRequest pr WHERE pr.eventId IN :eventIds AND pr.status = 'CONFIRMED'")
     List<ParticipationRequest> findConfirmedRequestsByEventIds(@Param("eventIds") List<Long> eventIds);
+
+    // Подсчет заявок по eventId и статусу
+    @Query("SELECT COUNT(pr) FROM ParticipationRequest pr WHERE pr.eventId = :eventId AND pr.status = :status")
+    Long countByEventIdAndStatus(@Param("eventId") Long eventId, @Param("status") String status);
+
+    // Проверка существования заявки по eventId и userId
+    boolean existsByEventIdAndRequesterId(Long eventId, Long requesterId);
+
+    // Найти заявки по eventId и статусу
+    List<ParticipationRequest> findByEventIdAndStatus(Long eventId, String status);
+
+    // Найти заявки по userId и статусу
+    List<ParticipationRequest> findByRequesterIdAndStatus(Long userId, String status);
+
+    // Проверить, есть ли у пользователя подтвержденная заявка на событие
+    @Query("SELECT CASE WHEN COUNT(pr) > 0 THEN true ELSE false END FROM ParticipationRequest pr WHERE pr.eventId = :eventId AND pr.requesterId = :userId AND pr.status = 'CONFIRMED'")
+    boolean hasUserConfirmedRequestForEvent(@Param("eventId") Long eventId, @Param("userId") Long userId);
 }

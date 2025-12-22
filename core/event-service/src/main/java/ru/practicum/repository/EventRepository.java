@@ -2,6 +2,7 @@ package ru.practicum.repository;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import ru.practicum.dto.AdminEventSearch;
@@ -12,6 +13,25 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface EventRepository extends JpaRepository<Event, Long> {
+
+    // 1. Найти событие по ID с проверкой инициатора
+    @Query("SELECT e FROM Event e WHERE e.id = :eventId AND e.initiatorId = :userId")
+    Event findByIdAndInitiatorId(@Param("eventId") Long eventId, @Param("userId") Long userId);
+
+    // 2. Проверить существование события по ID и инициатору
+    boolean existsByIdAndInitiatorId(Long eventId, Long userId);
+
+    // 3. Получить количество подтвержденных заявок (для проверки лимита)
+    @Query("SELECT COUNT(pr) FROM ParticipationRequest pr WHERE pr.eventId = :eventId AND pr.status = 'CONFIRMED'")
+    Long countConfirmedRequestsForEvent(@Param("eventId") Long eventId);
+
+    // 4. Получить событие с минимальной информацией
+    @Query("SELECT e.id, e.initiatorId, e.state, e.participantLimit, e.requestModeration FROM Event e WHERE e.id = :eventId")
+    Object[] findEventInfoById(@Param("eventId") Long eventId);
+
+    @Modifying
+    @Query("UPDATE Event e SET e.views = e.views + 1 WHERE e.id IN :eventIds")
+    void incrementViewsForEvents(@Param("eventIds") List<Long> eventIds);
 
     @Query("SELECT e FROM Event e " +
             "WHERE (:text IS NULL OR " +
