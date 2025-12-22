@@ -12,11 +12,14 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class EventErrorResponseDto {
+public class ErrorResponseDto {
     private String status;
     private String error;
     private String message;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime timestamp;
+
+    @Builder.Default
+    private Integer statusCode = 400;
 }
