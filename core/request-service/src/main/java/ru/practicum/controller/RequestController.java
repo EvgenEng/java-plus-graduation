@@ -27,7 +27,7 @@ public class RequestController {
     private final ParticipationRequestService participationRequestService;
 
     // Получение всех заявок на участие в событии текущего пользователя
-    @GetMapping("/users/{userId}/events/{eventId}/requests")
+    @GetMapping("/{userId}/events/{eventId}/requests")
     public ResponseEntity<List<ParticipationRequestDto>> getAllRequestsByEventAndInitiator(
             @PathVariable Long userId,
             @PathVariable Long eventId) {
@@ -40,7 +40,7 @@ public class RequestController {
     }
 
     // Изменение статуса заявок на участие в событии
-    @PatchMapping("/users/{userId}/events/{eventId}/requests")
+    @PatchMapping("/{userId}/events/{eventId}/requests")
     public ResponseEntity<EventRequestStatusUpdateResult> updateParticipationRequestStatus(
             @PathVariable Long userId,
             @PathVariable Long eventId,
@@ -54,7 +54,7 @@ public class RequestController {
     }
 
     // Получение всех заявок пользователя на участие в событиях
-    @GetMapping("/users/{userId}/requests")
+    @GetMapping("/{userId}/requests")
     public ResponseEntity<List<ParticipationRequestDto>> getAllRequestsByUser(
             @PathVariable Long userId) {
 
@@ -65,7 +65,7 @@ public class RequestController {
     }
 
     // Создание заявки на участие в событии
-    @PostMapping("/users/{userId}/requests")
+    @PostMapping("/{userId}/requests")
     public ResponseEntity<ParticipationRequestDto> createParticipationRequest(
             @PathVariable Long userId,
             @RequestParam(required = false) Long eventId,
@@ -88,7 +88,7 @@ public class RequestController {
     }
 
     // Отмена заявки на участие в событии
-    @PatchMapping("/users/{userId}/requests/{requestId}/cancel")
+    @PatchMapping("/{userId}/requests/{requestId}/cancel")
     public ResponseEntity<ParticipationRequestDto> cancelParticipationRequest(
             @PathVariable Long userId,
             @PathVariable Long requestId) {

@@ -70,7 +70,7 @@ public class EventController {
     }
 
     // Получение событий пользователя
-    @GetMapping("/users/{userId}/events")
+    @GetMapping("/{userId}/events")
     public ResponseEntity<List<EventDto>> getEventsByUserId(
             @PathVariable Long userId,
             @RequestParam(defaultValue = "0") Integer from,
@@ -83,7 +83,7 @@ public class EventController {
     }
 
     // Создание события
-    @PostMapping("/users/{userId}/events")
+    @PostMapping("/{userId}/events")
     public ResponseEntity<EventDto> createEvent(
             @PathVariable Long userId,
             @Valid @RequestBody NewEventDto newEventDto) {
@@ -107,7 +107,7 @@ public class EventController {
     }
 
     // Получение события пользователя
-    @GetMapping("/users/{userId}/events/{eventId}")
+    @GetMapping("/{userId}/events/{eventId}")
     public ResponseEntity<EventDto> getEventByIdAndUser(
             @PathVariable Long userId,
             @PathVariable Long eventId) {
@@ -119,7 +119,7 @@ public class EventController {
     }
 
     // Обновление события пользователем
-    @PatchMapping("/users/{userId}/events/{eventId}")
+    @PatchMapping("/{userId}/events/{eventId}")
     public ResponseEntity<EventDto> updateEventByUser(
             @PathVariable Long userId,
             @PathVariable Long eventId,
