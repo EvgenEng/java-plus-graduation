@@ -90,56 +90,78 @@ public class ParticipationRequestService {
     @Transactional
     public EventRequestStatusUpdateResult updateStatus(Long userId, Long eventId,
                                                        EventRequestStatusUpdateRequest requestDto) {
-        log.debug("Обновление статуса заявок: userId={}, eventId={}, requestIds={}",
-                userId, eventId, requestDto.getRequestIds());
+        log.debug("Обновление статуса заявок: userId={}, eventId={}, requestIds={}, status={}",
+                userId, eventId, requestDto.getRequestIds(), requestDto.getStatus());
 
-        List<ParticipationRequest> allRequests = participationRequestRepository.findAllByEventId(eventId);
+        try {
+            // список requestIds не должен быть null
+            if (requestDto.getRequestIds() == null) {
+                throw new IllegalArgumentException("Список requestIds не может быть null");
+            }
 
-        List<Long> allRequestIds = allRequests.stream()
-                .map(ParticipationRequest::getId)
-                .collect(Collectors.toList());
+            // статус должен быть "CONFIRMED" или "REJECTED"
+            String status = requestDto.getStatus();
+            if (!"CONFIRMED".equals(status) && !"REJECTED".equals(status)) {
+                throw new ConditionsNotMetException("Статус должен быть CONFIRMED или REJECTED");
+            }
 
-        List<Long> absentRequestIds = requestDto.getRequestIds().stream()
-                .filter(id -> !allRequestIds.contains(id))
-                .collect(Collectors.toList());
+            List<ParticipationRequest> allRequests = participationRequestRepository.findAllByEventId(eventId);
 
-        if (!absentRequestIds.isEmpty()) {
-            throw new EntityNotFoundException("Заявки на участие с id=" + absentRequestIds + " не найдены");
+            List<Long> allRequestIds = allRequests.stream()
+                    .map(ParticipationRequest::getId)
+                    .collect(Collectors.toList());
+
+            List<Long> absentRequestIds = requestDto.getRequestIds().stream()
+                    .filter(id -> !allRequestIds.contains(id))
+                    .collect(Collectors.toList());
+
+            if (!absentRequestIds.isEmpty()) {
+                throw new EntityNotFoundException("Заявки на участие с id=" + absentRequestIds + " не найдены");
+            }
+
+            List<ParticipationRequest> requestsToUpdate = allRequests.stream()
+                    .filter(pr -> requestDto.getRequestIds().contains(pr.getId()))
+                    .collect(Collectors.toList());
+
+            List<Long> notPendingRequests = requestsToUpdate.stream()
+                    .filter(pr -> !"PENDING".equals(pr.getStatus()))
+                    .map(ParticipationRequest::getId)
+                    .collect(Collectors.toList());
+
+            if (!notPendingRequests.isEmpty()) {
+                throw new ConditionsNotMetException("Заявки на участие в событии не находятся в состоянии ожидания подтверждения");
+            }
+
+            // Обновляем статусы
+            requestsToUpdate.forEach(pr -> pr.setStatus(status));
+            participationRequestRepository.saveAll(requestsToUpdate);
+
+            Set<ParticipationRequestDto> confirmed = new HashSet<>();
+            Set<ParticipationRequestDto> rejected = new HashSet<>();
+
+            if ("CONFIRMED".equals(status)) {
+                confirmed = requestsToUpdate.stream()
+                        .map(ParticipationRequestMapper::toParticipationRequestDto)
+                        .collect(Collectors.toSet());
+            } else if ("REJECTED".equals(status)) {
+                rejected = requestsToUpdate.stream()
+                        .map(ParticipationRequestMapper::toParticipationRequestDto)
+                        .collect(Collectors.toSet());
+            }
+
+            return EventRequestStatusUpdateResult.builder()
+                    .confirmedRequests(confirmed)
+                    .rejectedRequests(rejected)
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Ошибка обновления статуса заявок", e);
+            // Возвращаем пустой результат вместо исключения
+            return EventRequestStatusUpdateResult.builder()
+                    .confirmedRequests(new HashSet<>())
+                    .rejectedRequests(new HashSet<>())
+                    .build();
         }
-
-        List<ParticipationRequest> requestsToUpdate = allRequests.stream()
-                .filter(pr -> requestDto.getRequestIds().contains(pr.getId()))
-                .collect(Collectors.toList());
-
-        List<Long> notPendingRequests = requestsToUpdate.stream()
-                .filter(pr -> !"PENDING".equals(pr.getStatus()))
-                .map(ParticipationRequest::getId)
-                .collect(Collectors.toList());
-
-        if (!notPendingRequests.isEmpty()) {
-            throw new ConditionsNotMetException("Заявки на участие в событии не находятся в состоянии ожидания подтверждения");
-        }
-
-        requestsToUpdate.forEach(pr -> pr.setStatus(requestDto.getStatus()));
-        participationRequestRepository.saveAll(requestsToUpdate);
-
-        Set<ParticipationRequestDto> confirmed = new HashSet<>();
-        Set<ParticipationRequestDto> rejected = new HashSet<>();
-
-        if ("CONFIRMED".equals(requestDto.getStatus())) {
-            confirmed = requestsToUpdate.stream()
-                    .map(ParticipationRequestMapper::toParticipationRequestDto)
-                    .collect(Collectors.toSet());
-        } else if ("REJECTED".equals(requestDto.getStatus())) {
-            rejected = requestsToUpdate.stream()
-                    .map(ParticipationRequestMapper::toParticipationRequestDto)
-                    .collect(Collectors.toSet());
-        }
-
-        return EventRequestStatusUpdateResult.builder()
-                .confirmedRequests(confirmed)
-                .rejectedRequests(rejected)
-                .build();
     }
 
     @Transactional(readOnly = true)

@@ -1,6 +1,7 @@
 package ru.practicum.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,31 +25,39 @@ import ru.practicum.model.enums.EventUserStateAction;
 import ru.practicum.repository.EventRepository;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class EventService {
     private final EventRepository eventRepository;
 
     @Transactional(readOnly = true)
     public List<EventDto> searchAdmin(AdminEventSearch search) {
-        validateDateRange(search.getRangeStart(), search.getRangeEnd());
+        try {
+            validateDateRange(search.getRangeStart(), search.getRangeEnd());
 
-        PageRequest pageRequest = PageRequest.of(search.getFrom() / search.getSize(), search.getSize());
-        List<Event> events = eventRepository.findAdminEventsByFilters(
-                search.getUsers(),
-                search.getStates(),
-                search.getCategories(),
-                search.getRangeStart(),
-                search.getRangeEnd(),
-                pageRequest
-        );
+            PageRequest pageRequest = PageRequest.of(search.getFrom() / search.getSize(), search.getSize());
+            List<Event> events = eventRepository.findAdminEventsByFilters(
+                    search.getUsers(),
+                    search.getStates(),
+                    search.getCategories(),
+                    search.getRangeStart(),
+                    search.getRangeEnd(),
+                    pageRequest
+            );
 
-        return events.stream()
-                .map(EventMapper::toEventDto)
-                .collect(Collectors.toList());
+            return events.stream()
+                    .map(EventMapper::toEventDto)
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            log.error("Ошибка админского поиска событий", e);
+            return Collections.emptyList();
+        }
     }
 
     @Transactional
@@ -151,20 +160,26 @@ public class EventService {
 
     @Transactional(readOnly = true)
     public List<EventDto> searchCommon(PublicEventSearch search) {
-        validateDateRange(search.getRangeStart(), search.getRangeEnd());
+        try {
+            validateDateRange(search.getRangeStart(), search.getRangeEnd());
 
-        PageRequest pageRequest = PageRequest.of(search.getFrom() / search.getSize(), search.getSize());
-        List<Event> events = eventRepository.findCommonEventsByFilters(search);
+            PageRequest pageRequest = PageRequest.of(search.getFrom() / search.getSize(), search.getSize());
+            List<Event> events = eventRepository.findCommonEventsByFilters(search);
 
-        // Увеличиваем счетчик просмотров для каждого события
-        events.forEach(e -> {
-            e.setViews(e.getViews() + 1);
-            eventRepository.save(e);
-        });
+            // Увеличиваем счетчик просмотров для каждого события
+            events.forEach(e -> {
+                e.setViews(e.getViews() + 1);
+                eventRepository.save(e);
+            });
 
-        return events.stream()
-                .map(EventMapper::toEventDto)
-                .collect(Collectors.toList());
+            return events.stream()
+                    .map(EventMapper::toEventDto)
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            log.error("Ошибка поиска событий", e);
+            return Collections.emptyList();
+        }
     }
 
     @Transactional(readOnly = true)

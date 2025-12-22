@@ -20,13 +20,9 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             "      OR LOWER(e.title) LIKE LOWER(CONCAT('%', :text, '%'))) " +
             "AND (:paid IS NULL OR e.paid = :paid) " +
             "AND (:categories IS NULL OR e.categoryId IN :categories) " +
-            "AND ((:rangeStart IS NULL AND :rangeEnd IS NULL AND e.eventDate > :currentTime) " +
-            "     OR (:rangeStart IS NOT NULL AND e.eventDate >= :rangeStart) " +
-            "     OR (:rangeEnd IS NOT NULL AND e.eventDate <= :rangeEnd)) " +
-            "AND (:onlyAvailable IS NULL OR " +
-            "     (:onlyAvailable = TRUE AND (e.participantLimit = 0 OR e.participantLimit > e.confirmedRequests)) " +
-            "     OR :onlyAvailable = FALSE) " +
-            "AND e.state = :state " +
+            "AND (:rangeStart IS NULL OR e.eventDate >= :rangeStart) " +
+            "AND (:rangeEnd IS NULL OR e.eventDate <= :rangeEnd) " +
+            "AND e.state = 'PUBLISHED' " +  // Только опубликованные
             "ORDER BY " +
             "CASE WHEN :sort = 'EVENT_DATE' THEN e.eventDate END ASC, " +
             "CASE WHEN :sort = 'VIEWS' THEN e.views END DESC")
@@ -36,10 +32,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             @Param("categories") List<Long> categories,
             @Param("rangeStart") LocalDateTime rangeStart,
             @Param("rangeEnd") LocalDateTime rangeEnd,
-            @Param("onlyAvailable") Boolean onlyAvailable,
             @Param("sort") String sort,
-            @Param("state") String state,
-            @Param("currentTime") LocalDateTime currentTime,
             Pageable pageable);
 
     default List<Event> findCommonEventsByFilters(PublicEventSearch search) {
@@ -49,16 +42,19 @@ public interface EventRepository extends JpaRepository<Event, Long> {
         if (from != null && size != null) {
             pageable = Pageable.ofSize(size).withPage(from / size);
         }
+
+        String sort = search.getSort();
+        if (sort == null) {
+            sort = "EVENT_DATE";
+        }
+
         return findCommonEventsByFilters(
                 search.getText(),
                 search.getPaid(),
                 search.getCategories(),
                 search.getRangeStart(),
                 search.getRangeEnd(),
-                search.getOnlyAvailable(),
-                search.getSort(),
-                "PUBLISHED",
-                LocalDateTime.now(),
+                sort,
                 pageable);
     }
 
@@ -110,4 +106,6 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     @Query("SELECT e FROM Event e WHERE e.id = :eventId AND e.state = 'PUBLISHED'")
     Event findPublishedById(@Param("eventId") Long eventId);
+
+    List<Event> findByState(String state, Pageable pageable);
 }
