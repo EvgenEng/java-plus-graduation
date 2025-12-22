@@ -12,9 +12,7 @@ import ru.practicum.exception.ConditionsNotMetException;
 import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.EntityNotFoundException;
 import ru.practicum.mapper.ParticipationRequestMapper;
-import ru.practicum.model.Event;
 import ru.practicum.model.ParticipationRequest;
-import ru.practicum.repository.EventRepository;
 import ru.practicum.repository.ParticipationRequestRepository;
 
 import java.time.LocalDateTime;
@@ -28,7 +26,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ParticipationRequestService {
     private final ParticipationRequestRepository participationRequestRepository;
-    private final EventRepository eventRepository;
 
     @Transactional(readOnly = true)
     public List<ParticipationRequestDto> getAllByUser(Long userId) {
@@ -44,11 +41,6 @@ public class ParticipationRequestService {
     public List<ParticipationRequestDto> getAllByEventAndInitiator(Long userId, Long eventId) {
         log.debug("Получение заявок на участие в событии: userId={}, eventId={}", userId, eventId);
 
-        // Проверяем, что пользователь - инициатор события
-        if (!eventRepository.existsByIdAndInitiatorId(eventId, userId)) {
-            throw new AccessDeniedException("Только инициатор события может просматривать заявки на участие");
-        }
-
         return participationRequestRepository.findAllByEventId(eventId)
                 .stream()
                 .map(ParticipationRequestMapper::toParticipationRequestDto)
@@ -59,50 +51,12 @@ public class ParticipationRequestService {
     public ParticipationRequestDto create(Long userId, Long eventId) {
         log.debug("Создание заявки на участие: userId={}, eventId={}", userId, eventId);
 
-        // 1. Получаем событие
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new EntityNotFoundException("Событие с id=" + eventId + " не найдено"));
-
-        log.debug("Событие найдено: id={}, initiatorId={}, state={}, participantLimit={}, requestModeration={}",
-                eventId, event.getInitiatorId(), event.getState(), event.getParticipantLimit(), event.getRequestModeration());
-
-        // 2. Проверяем что пользователь НЕ инициатор
-        if (event.getInitiatorId().equals(userId)) {
-            throw new ConflictException("Инициатор события не может подать заявку на участие в своём событии");
-        }
-
-        // 3. Проверяем что событие ОПУБЛИКОВАНО
-        if (!"PUBLISHED".equals(event.getState())) {
-            throw new ConflictException("Нельзя участвовать в неопубликованном событии");
-        }
-
-        // 4. Проверяем лимит участников (если participantLimit > 0)
-        if (event.getParticipantLimit() > 0) {
-            Long confirmedCount = participationRequestRepository.countByEventIdAndStatus(eventId, "CONFIRMED");
-            if (confirmedCount == null) confirmedCount = 0L;
-
-            log.debug("Подтвержденных заявок для события {}: {}, лимит: {}",
-                    eventId, confirmedCount, event.getParticipantLimit());
-
-            if (confirmedCount >= event.getParticipantLimit()) {
-                throw new ConflictException("Достигнут лимит участников события");
-            }
-        }
-
-        // 5. Проверяем дублирующую заявку
+        // 1. Проверяем дублирующую заявку (это можно проверить локально)
         if (participationRequestRepository.existsByRequesterIdAndEventId(userId, eventId)) {
             throw new ConflictException("Нельзя отправить дублирующую заявку на участие в событии");
         }
 
-        // 6. Определяем статус заявки
         String status = "PENDING";
-
-        // Если не требуется модерация ИЛИ лимит = 0 → сразу подтверждаем
-        if (Boolean.FALSE.equals(event.getRequestModeration()) || event.getParticipantLimit() == 0) {
-            status = "CONFIRMED";
-            log.debug("Заявка будет автоматически подтверждена (requestModeration={}, participantLimit={})",
-                    event.getRequestModeration(), event.getParticipantLimit());
-        }
 
         // Создаем заявку
         ParticipationRequest participationRequest = ParticipationRequest.builder()
@@ -114,8 +68,8 @@ public class ParticipationRequestService {
 
         ParticipationRequest savedRequest = participationRequestRepository.save(participationRequest);
 
-        log.info("Создана заявка на участие: id={}, userId={}, eventId={}, status={}, requestModeration={}, participantLimit={}",
-                savedRequest.getId(), userId, eventId, status, event.getRequestModeration(), event.getParticipantLimit());
+        log.info("Создана заявка на участие: id={}, userId={}, eventId={}, status={}",
+                savedRequest.getId(), userId, eventId, status);
 
         return ParticipationRequestMapper.toParticipationRequestDto(savedRequest);
     }
@@ -136,7 +90,8 @@ public class ParticipationRequestService {
         participationRequest.setStatus("CANCELED");
         ParticipationRequest updatedRequest = participationRequestRepository.save(participationRequest);
 
-        log.info("Заявка отменена: requestId={}, userId={}", requestId, userId);
+        log.info("Заявка отменена: requestId={}, userId={}, eventId={}",
+                requestId, userId, participationRequest.getEventId());
 
         return ParticipationRequestMapper.toParticipationRequestDto(updatedRequest);
     }
@@ -148,8 +103,8 @@ public class ParticipationRequestService {
                 userId, eventId, requestDto.getRequestIds(), requestDto.getStatus());
 
         // 1. Проверка входных данных
-        if (requestDto.getRequestIds() == null) {
-            throw new IllegalArgumentException("Список requestIds не может быть null");
+        if (requestDto.getRequestIds() == null || requestDto.getRequestIds().isEmpty()) {
+            throw new IllegalArgumentException("Список requestIds не может быть null или пустым");
         }
 
         String status = requestDto.getStatus();
@@ -157,23 +112,10 @@ public class ParticipationRequestService {
             throw new ConditionsNotMetException("Статус должен быть CONFIRMED или REJECTED");
         }
 
-        // 2. Получаем событие и проверяем инициатора
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new EntityNotFoundException("Событие с id=" + eventId + " не найдено"));
-
-        if (!event.getInitiatorId().equals(userId)) {
-            throw new ConflictException("Только инициатор события может менять статусы заявок");
-        }
-
-        // 3. Если модерация заявок отключена
-        if (Boolean.FALSE.equals(event.getRequestModeration())) {
-            throw new ConditionsNotMetException("Для этого события подтверждение заявок не требуется");
-        }
-
-        // 4. Получаем все заявки на событие
+        // 2. Получаем все заявки на событие
         List<ParticipationRequest> allRequests = participationRequestRepository.findAllByEventId(eventId);
 
-        // 5. Проверяем существование запрошенных ID
+        // 3. Проверяем существование запрошенных ID
         List<Long> allRequestIds = allRequests.stream()
                 .map(ParticipationRequest::getId)
                 .collect(Collectors.toList());
@@ -186,12 +128,12 @@ public class ParticipationRequestService {
             throw new EntityNotFoundException("Заявки на участие с id=" + absentRequestIds + " не найдены");
         }
 
-        // 6. Фильтруем только запрошенные заявки
+        // 4. Фильтруем только запрошенные заявки
         List<ParticipationRequest> requestsToUpdate = allRequests.stream()
                 .filter(pr -> requestDto.getRequestIds().contains(pr.getId()))
                 .collect(Collectors.toList());
 
-        // 7. Проверяем, что все заявки в статусе PENDING
+        // 5. Проверяем, что все заявки в статусе PENDING
         List<Long> notPendingRequests = requestsToUpdate.stream()
                 .filter(pr -> !"PENDING".equals(pr.getStatus()))
                 .map(ParticipationRequest::getId)
@@ -201,55 +143,7 @@ public class ParticipationRequestService {
             throw new ConditionsNotMetException("Заявки на участие в событии не находятся в состоянии ожидания подтверждения");
         }
 
-        // 8. ПРОВЕРКА ЛИМИТА ПРИ ПОДТВЕРЖДЕНИИ
-        if ("CONFIRMED".equals(status)) {
-            // Проверяем лимит участников
-            if (event.getParticipantLimit() > 0) {
-                Long confirmedCount = participationRequestRepository.countByEventIdAndStatus(eventId, "CONFIRMED");
-                if (confirmedCount == null) confirmedCount = 0L;
-
-                long availableSlots = event.getParticipantLimit() - confirmedCount;
-
-                // Если лимит уже достигнут
-                if (availableSlots <= 0) {
-                    throw new ConflictException("Лимит участников события уже достигнут");
-                }
-
-                // Если доступных мест меньше, чем запрошенных заявок
-                if (availableSlots < requestsToUpdate.size()) {
-                    // Подтверждаем первые availableSlots заявок
-                    List<ParticipationRequest> toConfirm = requestsToUpdate.stream()
-                            .limit(availableSlots)
-                            .collect(Collectors.toList());
-                    List<ParticipationRequest> toReject = requestsToUpdate.stream()
-                            .skip(availableSlots)
-                            .collect(Collectors.toList());
-
-                    toConfirm.forEach(pr -> pr.setStatus("CONFIRMED"));
-                    toReject.forEach(pr -> pr.setStatus("REJECTED"));
-
-                    participationRequestRepository.saveAll(toConfirm);
-                    participationRequestRepository.saveAll(toReject);
-
-                    Set<ParticipationRequestDto> confirmed = toConfirm.stream()
-                            .map(ParticipationRequestMapper::toParticipationRequestDto)
-                            .collect(Collectors.toSet());
-                    Set<ParticipationRequestDto> rejected = toReject.stream()
-                            .map(ParticipationRequestMapper::toParticipationRequestDto)
-                            .collect(Collectors.toSet());
-
-                    log.info("Частичное подтверждение заявок: подтверждено={}, отклонено={}, eventId={}",
-                            toConfirm.size(), toReject.size(), eventId);
-
-                    return EventRequestStatusUpdateResult.builder()
-                            .confirmedRequests(confirmed)
-                            .rejectedRequests(rejected)
-                            .build();
-                }
-            }
-        }
-
-        // 9. Стандартное обновление статусов
+        // 6. Стандартное обновление статусов
         requestsToUpdate.forEach(pr -> pr.setStatus(status));
         participationRequestRepository.saveAll(requestsToUpdate);
 
