@@ -283,9 +283,13 @@ public class EventService {
     }
 
     private void validateEventDateForCreate(LocalDateTime eventDate) {
-        if (eventDate.isBefore(LocalDateTime.now().plusHours(2))) {
+        if (eventDate == null) {
+            return;
+        }
+
+        if (eventDate.isBefore(LocalDateTime.now().minusMinutes(30))) {
             throw new DateValidationException(
-                    "Дата начала события должна быть не ранее чем через 2 часа от текущего момента");
+                    "Дата начала события не может быть более чем на 30 минут в прошлом");
         }
     }
 
