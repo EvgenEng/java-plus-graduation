@@ -154,12 +154,13 @@ public class EventController {
             @RequestParam(required = false) Boolean paid,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime rangeStart,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime rangeEnd,
+            @RequestParam(required = false, defaultValue = "false") Boolean onlyAvailable,
             @RequestParam(required = false, defaultValue = "EVENT_DATE") String sort,
             @RequestParam(required = false, defaultValue = "0") Integer from,
             @RequestParam(required = false, defaultValue = "10") Integer size) {
 
-        log.info("Публичный поиск событий: text={}, categories={}, paid={}, sort={}, from={}, size={}",
-                text, categories, paid, sort, from, size);
+        log.info("Публичный поиск событий: text={}, categories={}, paid={}, onlyAvailable={}, sort={}, from={}, size={}",
+                text, categories, paid, onlyAvailable, sort, from, size);
 
         // Проверяем параметры пагинации
         if (from == null) from = 0;
@@ -176,6 +177,7 @@ public class EventController {
                 .paid(paid)
                 .rangeStart(rangeStart)
                 .rangeEnd(rangeEnd)
+                .onlyAvailable(onlyAvailable)
                 .sort(sort)
                 .from(from)
                 .size(size)

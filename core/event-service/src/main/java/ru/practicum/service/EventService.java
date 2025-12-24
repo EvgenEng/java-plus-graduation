@@ -40,20 +40,11 @@ public class EventService {
         try {
             validateDateRange(search.getRangeStart(), search.getRangeEnd());
 
-            PageRequest pageRequest = PageRequest.of(search.getFrom() / search.getSize(), search.getSize());
-            List<Event> events = eventRepository.findAdminEventsByFilters(
-                    search.getUsers(),
-                    search.getStates(),
-                    search.getCategories(),
-                    search.getRangeStart(),
-                    search.getRangeEnd(),
-                    pageRequest
-            );
+            List<Event> events = eventRepository.findAdminEventsByFilters(search);
 
             return events.stream()
                     .map(EventMapper::toEventDto)
                     .collect(Collectors.toList());
-
         } catch (Exception e) {
             log.error("Ошибка админского поиска событий", e);
             return Collections.emptyList();

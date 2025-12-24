@@ -38,7 +38,11 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             "AND (:categories IS NULL OR e.categoryId IN :categories) " +
             "AND (:rangeStart IS NULL OR e.eventDate >= :rangeStart) " +
             "AND (:rangeEnd IS NULL OR e.eventDate <= :rangeEnd) " +
-            "AND e.state = 'PUBLISHED' " +  // Только опубликованные
+            "AND e.state = 'PUBLISHED' " +
+            "AND (:onlyAvailable IS NULL OR " +
+            "     :onlyAvailable = false OR " +
+            "     (:onlyAvailable = true AND " +
+            "      (e.participantLimit = 0 OR e.confirmedRequests < e.participantLimit))) " +
             "ORDER BY " +
             "CASE WHEN :sort = 'EVENT_DATE' THEN e.eventDate END ASC, " +
             "CASE WHEN :sort = 'VIEWS' THEN e.views END DESC")
@@ -48,6 +52,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             @Param("categories") List<Long> categories,
             @Param("rangeStart") LocalDateTime rangeStart,
             @Param("rangeEnd") LocalDateTime rangeEnd,
+            @Param("onlyAvailable") Boolean onlyAvailable,
             @Param("sort") String sort,
             Pageable pageable);
 
@@ -88,7 +93,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             }
         }
 
-        // 5. ВАЖНОЕ ИСПРАВЛЕНИЕ: Обернуть вызов в try-catch!
+        // 5. Обернуть вызов в try-catch!
         try {
             return findCommonEventsByFilters(
                     safeSearch.getText(),
@@ -96,12 +101,13 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                     safeSearch.getCategories(),
                     safeSearch.getRangeStart(),
                     safeSearch.getRangeEnd(),
+                    safeSearch.getOnlyAvailable(),
                     sort,
                     pageable);
         } catch (Exception e) {
             // Логируем ошибку где-то в другом месте, здесь просто возвращаем пустой список
             // чтобы не было 500 ошибки
-            return java.util.Collections.emptyList(); // <-- Импортируйте Collections или используйте полное имя
+            return java.util.Collections.emptyList();
         }
     }
 
