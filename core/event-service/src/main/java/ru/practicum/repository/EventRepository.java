@@ -139,9 +139,6 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                 pageable);
     }
 
-    @Query("SELECT e FROM Event e WHERE e.state = 'PUBLISHED' ORDER BY e.eventDate ASC")
-    List<Event> findPublishedEvents(Pageable pageable);
-
     List<Event> findAllByInitiatorIdOrderByEventDateDesc(Long initiatorId, Pageable pageable);
 
     default List<Event> findAllByInitiatorIdOrderByEventDateDesc(Long initiatorId, Integer from, Integer size) {
