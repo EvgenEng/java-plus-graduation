@@ -23,11 +23,12 @@ import ru.practicum.model.enums.EventAdminStateAction;
 import ru.practicum.model.enums.EventState;
 import ru.practicum.model.enums.EventUserStateAction;
 import ru.practicum.repository.EventRepository;
-
-import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Pageable;
+
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -160,99 +161,75 @@ public class EventService {
 
     @Transactional(readOnly = true)
     public List<EventDto> searchCommon(PublicEventSearch search) {
-        log.info("Поиск событий с фильтрами: text.length={}, categories={}, paid={}, sort={}, from={}, size={}",
-                search.getText() != null ? Math.min(search.getText().length(), 100) : 0,
-                search.getCategories(),
-                search.getPaid(),
-                search.getSort(),
-                search.getFrom(),
-                search.getSize());
+        log.info("Простой поиск - возвращаем все опубликованные события");
 
         try {
-            // 1. Базовая проверка на null
-            if (search == null) {
-                log.warn("PublicEventSearch is null");
-                return Collections.emptyList();
+            // 1. Пагинация
+            Pageable pageable = Pageable.ofSize(10).withPage(0);
+            if (search.getFrom() != null && search.getSize() != null && search.getSize() > 0) {
+                int pageNumber = Math.max(0, search.getFrom() / search.getSize());
+                pageable = Pageable.ofSize(search.getSize()).withPage(pageNumber);
             }
 
-            // 2. Устанавливаем значения по умолчанию
-            if (search.getFrom() == null) {
-                search.setFrom(0);
-            }
-            if (search.getSize() == null) {
-                search.setSize(10);
-            }
-            if (search.getSort() == null) {
-                search.setSort("EVENT_DATE");
-            }
-            if (search.getText() != null && search.getText().isEmpty()) {
-                search.setText(null);
+            // 2. Получаем все опубликованные события
+            List<Event> events = eventRepository.findPublishedEvents(pageable);
+
+            // 3. Фильтруем ВСЕ локально
+            List<Event> filteredEvents = events;
+
+            // 3.1. Фильтр по категориям
+            if (search.getCategories() != null && !search.getCategories().isEmpty()) {
+                filteredEvents = filteredEvents.stream()
+                        .filter(e -> search.getCategories().contains(e.getCategoryId()))
+                        .collect(Collectors.toList());
             }
 
-            // 3. Проверяем параметры пагинации
-            if (search.getFrom() < 0) {
-                throw new IllegalArgumentException("Параметр 'from' не может быть отрицательным");
-            }
-            if (search.getSize() <= 0) {
-                throw new IllegalArgumentException("Параметр 'size' должен быть больше 0");
-            }
-
-            // 4. Валидация диапазона дат (самая важная часть!)
-            if (search.getRangeStart() != null && search.getRangeEnd() != null) {
-                if (search.getRangeStart().isAfter(search.getRangeEnd())) {
-                    throw new IllegalArgumentException("Начальная дата не может быть позже конечной");
-                }
+            // 3.2. Фильтр по paid
+            if (search.getPaid() != null) {
+                filteredEvents = filteredEvents.stream()
+                        .filter(e -> e.getPaid().equals(search.getPaid()))
+                        .collect(Collectors.toList());
             }
 
-            // 5. Защита от очень длинных текстов (чтобы не ломать SQL запросы)
-            if (search.getText() != null && search.getText().length() > 1000) {
-                log.warn("Текст поиска слишком длинный ({} символов), обрезаем до 1000", search.getText().length());
-                search.setText(search.getText().substring(0, 1000));
+            // 3.3. Фильтр по тексту (если есть)
+            if (search.getText() != null && !search.getText().isEmpty()) {
+                String text = search.getText().toLowerCase();
+                filteredEvents = filteredEvents.stream()
+                        .filter(e -> e.getAnnotation().toLowerCase().contains(text) ||
+                                e.getDescription().toLowerCase().contains(text) ||
+                                e.getTitle().toLowerCase().contains(text))
+                        .collect(Collectors.toList());
             }
 
-            // 6. Если дата начала не указана, устанавливаем текущее время
-            if (search.getRangeStart() == null && search.getRangeEnd() == null) {
-                search.setRangeStart(LocalDateTime.now());
+            // 3.4. Фильтр по датам
+            if (search.getRangeStart() != null) {
+                filteredEvents = filteredEvents.stream()
+                        .filter(e -> e.getEventDate().isAfter(search.getRangeStart()))
+                        .collect(Collectors.toList());
+            }
+            if (search.getRangeEnd() != null) {
+                filteredEvents = filteredEvents.stream()
+                        .filter(e -> e.getEventDate().isBefore(search.getRangeEnd()))
+                        .collect(Collectors.toList());
             }
 
-            // 7. Вызываем репозиторий
-            List<Event> events;
-            try {
-                events = eventRepository.findCommonEventsByFilters(search);
-            } catch (Exception e) {
-                log.error("Ошибка в репозитории при поиске событий: {}", e.getMessage(), e);
-                // Возвращаем пустой список вместо падения
-                return Collections.emptyList();
+            // 3.5. Сортировка
+            if ("VIEWS".equals(search.getSort())) {
+                filteredEvents.sort((e1, e2) -> Long.compare(e2.getViews(), e1.getViews()));
             }
 
-            // 8. Увеличиваем просмотры если есть события
-            if (events != null && !events.isEmpty()) {
-                try {
-                    incrementViewsForEvents(events);
-                } catch (Exception e) {
-                    log.warn("Не удалось увеличить просмотры: {}", e.getMessage());
-                    // Продолжаем выполнение даже если не удалось увеличить просмотры
-                }
+            // 4. Увеличиваем просмотры
+            if (!filteredEvents.isEmpty()) {
+                incrementViewsForEvents(filteredEvents);
             }
 
-            // 9. Преобразуем и возвращаем результат
-            if (events == null || events.isEmpty()) {
-                return Collections.emptyList();
-            }
-
-            return events.stream()
+            // 5. Преобразуем в DTO
+            return filteredEvents.stream()
                     .map(EventMapper::toEventDto)
                     .collect(Collectors.toList());
 
-        } catch (IllegalArgumentException e) {
-            // Это валидационные ошибки - пробрасываем как есть
-            log.warn("Некорректные параметры поиска: {}", e.getMessage());
-            throw e;
-
         } catch (Exception e) {
-            // Любые другие ошибки логируем и возвращаем пустой список
-            // вместо падения с 500 ошибкой
-            log.error("Критическая ошибка в searchCommon: {}", e.getMessage(), e);
+            log.error("Ошибка в поиске: {}", e.getMessage(), e);
             return Collections.emptyList();
         }
     }
