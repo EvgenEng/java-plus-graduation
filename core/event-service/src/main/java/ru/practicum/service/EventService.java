@@ -163,23 +163,32 @@ public class EventService {
         log.info("Поиск событий с фильтрами: {}", search);
 
         try {
-            // 1ю Проверяем search на null
+            // 1. Проверяем search на null
             if (search == null) {
                 log.warn("PublicEventSearch is null");
                 return Collections.emptyList();
             }
 
-            // 2. Проверяем пагинационные параметры
-            Integer from = search.getFrom() != null ? search.getFrom() : 0;
-            Integer size = search.getSize() != null ? search.getSize() : 10;
+            // 2. Устанавливаем значения по умолчанию в самом объекте search
+            if (search.getFrom() == null) {
+                search.setFrom(0);
+            }
+            if (search.getSize() == null) {
+                search.setSize(10);
+            }
+            if (search.getSort() == null) {
+                search.setSort("EVENT_DATE");
+            }
 
             // 3. Проверяем диапазон дат
             if (search.getRangeStart() != null && search.getRangeEnd() != null) {
                 validateDateRange(search.getRangeStart(), search.getRangeEnd());
             }
 
+            // 4. Вызываем репозиторий с пагинацией
             List<Event> events = eventRepository.findCommonEventsByFilters(search);
 
+            // 5. Увеличиваем просмотры
             if (!events.isEmpty()) {
                 incrementViewsForEvents(events);
             }
@@ -190,7 +199,7 @@ public class EventService {
 
         } catch (Exception e) {
             log.error("Ошибка поиска событий: {}", e.getMessage(), e);
-            return Collections.emptyList();
+            throw new RuntimeException("Ошибка при поиске событий: " + e.getMessage(), e);
         }
     }
 

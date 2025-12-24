@@ -38,10 +38,18 @@ public class EventController {
             @RequestParam(required = false) List<Long> categories,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime rangeStart,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime rangeEnd,
-            @RequestParam(defaultValue = "0") Integer from,
-            @RequestParam(defaultValue = "10") Integer size) {
+            @RequestParam(required = false, defaultValue = "0") Integer from,
+            @RequestParam(required = false, defaultValue = "10") Integer size) {
 
-        log.info("Админский поиск событий: users={}, states={}, categories={}", users, states, categories);
+        log.info("Админский поиск событий: users={}, states={}, categories={}, from={}, size={}",
+                users, states, categories, from, size);
+
+        // Проверяем параметры пагинации
+        if (from == null) from = 0;
+        if (size == null) size = 10;
+        if (size <= 0) {
+            throw new IllegalArgumentException("Параметр size должен быть больше 0");
+        }
 
         AdminEventSearch search = AdminEventSearch.builder()
                 .users(users)
@@ -73,10 +81,17 @@ public class EventController {
     @GetMapping("/{userId}/events")
     public ResponseEntity<List<EventDto>> getEventsByUserId(
             @PathVariable Long userId,
-            @RequestParam(defaultValue = "0") Integer from,
-            @RequestParam(defaultValue = "10") Integer size) {
+            @RequestParam(required = false, defaultValue = "0") Integer from,
+            @RequestParam(required = false, defaultValue = "10") Integer size) {
 
         log.info("Получение событий пользователя: userId={}, from={}, size={}", userId, from, size);
+
+        // Проверяем параметры пагинации
+        if (from == null) from = 0;
+        if (size == null) size = 10;
+        if (size <= 0) {
+            throw new IllegalArgumentException("Параметр size должен быть больше 0");
+        }
 
         List<EventDto> events = eventService.findByUserId(userId, from, size);
         return ResponseEntity.ok(events);
@@ -139,11 +154,21 @@ public class EventController {
             @RequestParam(required = false) Boolean paid,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime rangeStart,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime rangeEnd,
-            @RequestParam(defaultValue = "EVENT_DATE") String sort,
-            @RequestParam(defaultValue = "0") Integer from,
-            @RequestParam(defaultValue = "10") Integer size) {
+            @RequestParam(required = false, defaultValue = "EVENT_DATE") String sort,
+            @RequestParam(required = false, defaultValue = "0") Integer from,
+            @RequestParam(required = false, defaultValue = "10") Integer size) {
 
-        log.info("Публичный поиск событий: text={}, categories={}, paid={}", text, categories, paid);
+        log.info("Публичный поиск событий: text={}, categories={}, paid={}, sort={}, from={}, size={}",
+                text, categories, paid, sort, from, size);
+
+        // Проверяем параметры пагинации
+        if (from == null) from = 0;
+        if (size == null) size = 10;
+        if (sort == null) sort = "EVENT_DATE";
+
+        if (size <= 0) {
+            throw new IllegalArgumentException("Параметр size должен быть больше 0");
+        }
 
         PublicEventSearch search = PublicEventSearch.builder()
                 .text(text)

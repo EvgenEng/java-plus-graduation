@@ -21,11 +21,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     // 2. Проверить существование события по ID и инициатору
     boolean existsByIdAndInitiatorId(Long eventId, Long userId);
 
-    // 3. Получить количество подтвержденных заявок (для проверки лимита)
-    //@Query("SELECT COUNT(pr) FROM ParticipationRequest pr WHERE pr.eventId = :eventId AND pr.status = 'CONFIRMED'")
-    //Long countConfirmedRequestsForEvent(@Param("eventId") Long eventId);
-
-    // 4. Получить событие с минимальной информацией
+    // 3. Получить событие с минимальной информацией
     @Query("SELECT e.id, e.initiatorId, e.state, e.participantLimit, e.requestModeration FROM Event e WHERE e.id = :eventId")
     Object[] findEventInfoById(@Param("eventId") Long eventId);
 
@@ -56,16 +52,19 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             Pageable pageable);
 
     default List<Event> findCommonEventsByFilters(PublicEventSearch search) {
-        Pageable pageable = Pageable.unpaged();
-        Integer from = search.getFrom();
-        Integer size = search.getSize();
-        if (from != null && size != null) {
-            pageable = Pageable.ofSize(size).withPage(from / size);
-        }
+        // Устанавливаем значения по умолчанию
+        String sort = search.getSort() != null ? search.getSort() : "EVENT_DATE";
 
-        String sort = search.getSort();
-        if (sort == null) {
-            sort = "EVENT_DATE";
+        // Проверяем пагинационные параметры
+        Pageable pageable = Pageable.unpaged();
+        if (search.getFrom() != null && search.getSize() != null && search.getSize() > 0) {
+            try {
+                int pageNumber = search.getFrom() / search.getSize();
+                pageable = Pageable.ofSize(search.getSize()).withPage(pageNumber);
+            } catch (ArithmeticException e) {
+                // Используем пагинацию по умолчанию
+                pageable = Pageable.ofSize(10).withPage(0);
+            }
         }
 
         return findCommonEventsByFilters(
@@ -95,10 +94,13 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     default List<Event> findAdminEventsByFilters(AdminEventSearch search) {
         Pageable pageable = Pageable.unpaged();
-        Integer from = search.getFrom();
-        Integer size = search.getSize();
-        if (from != null && size != null) {
-            pageable = Pageable.ofSize(size).withPage(from / size);
+        if (search.getFrom() != null && search.getSize() != null && search.getSize() > 0) {
+            try {
+                int pageNumber = search.getFrom() / search.getSize();
+                pageable = Pageable.ofSize(search.getSize()).withPage(pageNumber);
+            } catch (ArithmeticException e) {
+                pageable = Pageable.ofSize(10).withPage(0);
+            }
         }
         return findAdminEventsByFilters(
                 search.getUsers(),
@@ -112,10 +114,14 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     List<Event> findAllByInitiatorIdOrderByEventDateDesc(Long initiatorId, Pageable pageable);
 
     default List<Event> findAllByInitiatorIdOrderByEventDateDesc(Long initiatorId, Integer from, Integer size) {
-        if (from != null && size != null) {
-            return findAllByInitiatorIdOrderByEventDateDesc(
-                    initiatorId,
-                    Pageable.ofSize(size).withPage(from / size));
+        if (from != null && size != null && size > 0) {
+            try {
+                int pageNumber = from / size;
+                return findAllByInitiatorIdOrderByEventDateDesc(
+                        initiatorId,
+                        Pageable.ofSize(size).withPage(pageNumber));
+            } catch (ArithmeticException e) {
+            }
         }
         return findAllByInitiatorIdOrderByEventDateDesc(initiatorId, Pageable.unpaged());
     }
