@@ -135,4 +135,25 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ErrorResponseDto> handleRuntimeException(RuntimeException ex) {
+        log.error("Runtime error: {}", ex.getMessage(), ex);
+
+        if (ex instanceof IllegalArgumentException ||
+                ex instanceof ConditionsNotMetException ||
+                ex instanceof EntityNotFoundException) {
+            throw ex;
+        }
+
+        ErrorResponseDto error = ErrorResponseDto.builder()
+                .status("error")
+                .error("Internal Server Error")
+                .message("Произошла внутренняя ошибка сервера")
+                .timestamp(LocalDateTime.now())
+                .statusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
 }
