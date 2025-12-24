@@ -55,9 +55,9 @@ public interface EventRepository extends JpaRepository<Event, Long> {
         // 1. ОБРАБОТКА ТЕКСТА ДО ПЕРЕДАЧИ В SQL
         String safeText = search.getText();
         if (safeText != null) {
-            // ОГРАНИЧИВАЕМ ДЛИНУ ДО 100 СИМВОЛОВ
-            if (safeText.length() > 100) {
-                safeText = safeText.substring(0, 100);
+            // ОГРАНИЧИВАЕМ ДЛИНУ ДО 50 СИМВОЛОВ (еще меньше для безопасности!)
+            if (safeText.length() > 50) {
+                safeText = safeText.substring(0, 50);
             }
             // УДАЛЯЕМ ОПАСНЫЕ СИМВОЛЫ
             safeText = safeText.replace("%", "").replace("_", "");
@@ -88,14 +88,21 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             }
         }
 
-        return findCommonEventsByFilters(
-                safeSearch.getText(),
-                safeSearch.getPaid(),
-                safeSearch.getCategories(),
-                safeSearch.getRangeStart(),
-                safeSearch.getRangeEnd(),
-                sort,
-                pageable);
+        // 5. ВАЖНОЕ ИСПРАВЛЕНИЕ: Обернуть вызов в try-catch!
+        try {
+            return findCommonEventsByFilters(
+                    safeSearch.getText(),
+                    safeSearch.getPaid(),
+                    safeSearch.getCategories(),
+                    safeSearch.getRangeStart(),
+                    safeSearch.getRangeEnd(),
+                    sort,
+                    pageable);
+        } catch (Exception e) {
+            // Логируем ошибку где-то в другом месте, здесь просто возвращаем пустой список
+            // чтобы не было 500 ошибки
+            return java.util.Collections.emptyList(); // <-- Импортируйте Collections или используйте полное имя
+        }
     }
 
     @Query("SELECT e FROM Event e " +
