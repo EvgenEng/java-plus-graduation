@@ -30,19 +30,15 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     void incrementViewsForEvents(@Param("eventIds") List<Long> eventIds);
 
     @Query("SELECT e FROM Event e " +
-            "WHERE (:text IS NULL OR " +
-            "      LOWER(e.annotation) LIKE LOWER(CONCAT('%', :text, '%')) " +
-            "      OR LOWER(e.description) LIKE LOWER(CONCAT('%', :text, '%')) " +
-            "      OR LOWER(e.title) LIKE LOWER(CONCAT('%', :text, '%'))) " +
+            "WHERE e.state = 'PUBLISHED' " +
+            "AND (:text IS NULL OR " +
+            "     LOWER(e.annotation) LIKE LOWER(CONCAT('%', COALESCE(:text, ''), '%')) " +
+            "     OR LOWER(e.description) LIKE LOWER(CONCAT('%', COALESCE(:text, ''), '%')) " +
+            "     OR LOWER(e.title) LIKE LOWER(CONCAT('%', COALESCE(:text, ''), '%'))) " +
             "AND (:paid IS NULL OR e.paid = :paid) " +
             "AND (:categories IS NULL OR e.categoryId IN :categories) " +
             "AND (:rangeStart IS NULL OR e.eventDate >= :rangeStart) " +
             "AND (:rangeEnd IS NULL OR e.eventDate <= :rangeEnd) " +
-            "AND e.state = 'PUBLISHED' " +
-            "AND (:onlyAvailable IS NULL OR " +
-            "     :onlyAvailable = false OR " +
-            "     (:onlyAvailable = true AND " +
-            "      (e.participantLimit = 0 OR e.confirmedRequests < e.participantLimit))) " +
             "ORDER BY " +
             "CASE WHEN :sort = 'EVENT_DATE' THEN e.eventDate END ASC, " +
             "CASE WHEN :sort = 'VIEWS' THEN e.views END DESC")
@@ -52,7 +48,6 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             @Param("categories") List<Long> categories,
             @Param("rangeStart") LocalDateTime rangeStart,
             @Param("rangeEnd") LocalDateTime rangeEnd,
-            @Param("onlyAvailable") Boolean onlyAvailable,
             @Param("sort") String sort,
             Pageable pageable);
 
@@ -101,7 +96,6 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                     safeSearch.getCategories(),
                     safeSearch.getRangeStart(),
                     safeSearch.getRangeEnd(),
-                    safeSearch.getOnlyAvailable(),
                     sort,
                     pageable);
         } catch (Exception e) {

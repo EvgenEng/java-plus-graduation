@@ -38,15 +38,45 @@ public class EventService {
     @Transactional(readOnly = true)
     public List<EventDto> searchAdmin(AdminEventSearch search) {
         try {
-            validateDateRange(search.getRangeStart(), search.getRangeEnd());
+            log.info("Админский поиск: users={}, states={}, categories={}, rangeStart={}, rangeEnd={}, from={}, size={}",
+                    search.getUsers(), search.getStates(), search.getCategories(),
+                    search.getRangeStart(), search.getRangeEnd(), search.getFrom(), search.getSize());
 
-            List<Event> events = eventRepository.findAdminEventsByFilters(search);
+            // 1. Установить значения по умолчанию
+            if (search.getFrom() == null) search.setFrom(0);
+            if (search.getSize() == null) search.setSize(10);
 
+            // 2. Безопасная пагинация
+            if (search.getSize() <= 0) {
+                search.setSize(10); // дефолтное значение
+            }
+
+            // 3. Валидация дат
+            if (search.getRangeStart() != null && search.getRangeEnd() != null) {
+                if (search.getRangeStart().isAfter(search.getRangeEnd())) {
+                    throw new IllegalArgumentException("Начальная дата не может быть позже конечной");
+                }
+            }
+
+            // 4. Вызов репозитория с обработкой ошибок
+            List<Event> events;
+            try {
+                events = eventRepository.findAdminEventsByFilters(search);
+            } catch (Exception e) {
+                log.error("Ошибка в репозитории при админском поиске: {}", e.getMessage(), e);
+                events = Collections.emptyList();
+            }
+
+            // 5. Преобразование
             return events.stream()
                     .map(EventMapper::toEventDto)
                     .collect(Collectors.toList());
+
+        } catch (IllegalArgumentException e) {
+            // Пробрасываем валидационные ошибки
+            throw e;
         } catch (Exception e) {
-            log.error("Ошибка админского поиска событий", e);
+            log.error("Непредвиденная ошибка в админском поиске: {}", e.getMessage(), e);
             return Collections.emptyList();
         }
     }
