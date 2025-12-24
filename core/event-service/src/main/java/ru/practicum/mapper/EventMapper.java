@@ -14,24 +14,33 @@ import java.time.LocalDateTime;
 public class EventMapper {
 
     public static EventDto toEventDto(Event event) {
-        return EventDto.builder()
-                .id(event.getId())
-                .annotation(event.getAnnotation())
-                .category(event.getCategoryId())
-                .createdOn(event.getCreatedOn())
-                .description(event.getDescription())
-                .eventDate(event.getEventDate())
-                .initiator(event.getInitiatorId())
-                .location(new Location(event.getLat(), event.getLon()))
-                .paid(event.getPaid())
-                .participantLimit(event.getParticipantLimit())
-                .confirmedRequests(event.getConfirmedRequests())
-                .publishedOn(event.getPublishedOn())
-                .requestModeration(event.getRequestModeration())
-                .state(event.getState())
-                .title(event.getTitle())
-                .views(event.getViews())
-                .build();
+        if (event == null) {
+            return null;
+        }
+
+        try {
+            return EventDto.builder()
+                    .id(event.getId())
+                    .annotation(event.getAnnotation() != null ? event.getAnnotation() : "")
+                    .category(event.getCategoryId() != null ? event.getCategoryId() : 0L)
+                    .createdOn(event.getCreatedOn() != null ? event.getCreatedOn() : LocalDateTime.now())
+                    .description(event.getDescription() != null ? event.getDescription() : "")
+                    .eventDate(event.getEventDate() != null ? event.getEventDate() : LocalDateTime.now())
+                    .initiator(event.getInitiatorId() != null ? event.getInitiatorId() : 0L)
+                    .location(event.getLat() != null && event.getLon() != null ?
+                            new Location(event.getLat(), event.getLon()) : new Location(0.0, 0.0))
+                    .paid(event.getPaid() != null ? event.getPaid() : false)
+                    .participantLimit(event.getParticipantLimit() != null ? event.getParticipantLimit() : 0L)
+                    .confirmedRequests(event.getConfirmedRequests() != null ? event.getConfirmedRequests() : 0L)
+                    .publishedOn(event.getPublishedOn())
+                    .requestModeration(event.getRequestModeration() != null ? event.getRequestModeration() : true)
+                    .state(event.getState() != null ? event.getState() : "PENDING")
+                    .title(event.getTitle() != null ? event.getTitle() : "")
+                    .views(event.getViews() != null ? event.getViews() : 0L)
+                    .build();
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка при преобразовании события в DTO", e);
+        }
     }
 
     public static EventInfoDto toEventInfoDto(Event event) {

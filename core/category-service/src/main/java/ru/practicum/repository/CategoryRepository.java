@@ -21,6 +21,9 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
         return findAllCategories(pageable);
     }
 
+    @Query("SELECT COUNT(e) FROM Event e WHERE e.categoryId = :categoryId")
+    Long countEventsByCategoryId(@Param("categoryId") Long categoryId);
+
     List<Category> findByNameIgnoreCase(String name);
 
     List<Category> findAllByIdIn(List<Long> ids);
