@@ -52,27 +52,48 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             Pageable pageable);
 
     default List<Event> findCommonEventsByFilters(PublicEventSearch search) {
-        // Устанавливаем значения по умолчанию
-        String sort = search.getSort() != null ? search.getSort() : "EVENT_DATE";
+        // 1. ОБРАБОТКА ТЕКСТА ДО ПЕРЕДАЧИ В SQL
+        String safeText = search.getText();
+        if (safeText != null) {
+            // ОГРАНИЧИВАЕМ ДЛИНУ ДО 100 СИМВОЛОВ
+            if (safeText.length() > 100) {
+                safeText = safeText.substring(0, 100);
+            }
+            // УДАЛЯЕМ ОПАСНЫЕ СИМВОЛЫ
+            safeText = safeText.replace("%", "").replace("_", "");
+        }
 
-        // Проверяем пагинационные параметры
+        // 2. Создаем копию search с безопасным текстом
+        PublicEventSearch safeSearch = new PublicEventSearch();
+        safeSearch.setText(safeText);
+        safeSearch.setPaid(search.getPaid());
+        safeSearch.setCategories(search.getCategories());
+        safeSearch.setRangeStart(search.getRangeStart());
+        safeSearch.setRangeEnd(search.getRangeEnd());
+        safeSearch.setSort(search.getSort());
+        safeSearch.setFrom(search.getFrom());
+        safeSearch.setSize(search.getSize());
+
+        // 3. Устанавливаем значения по умолчанию
+        String sort = safeSearch.getSort() != null ? safeSearch.getSort() : "EVENT_DATE";
+
+        // 4. Проверяем пагинационные параметры
         Pageable pageable = Pageable.unpaged();
-        if (search.getFrom() != null && search.getSize() != null && search.getSize() > 0) {
+        if (safeSearch.getFrom() != null && safeSearch.getSize() != null && safeSearch.getSize() > 0) {
             try {
-                int pageNumber = search.getFrom() / search.getSize();
-                pageable = Pageable.ofSize(search.getSize()).withPage(pageNumber);
+                int pageNumber = safeSearch.getFrom() / safeSearch.getSize();
+                pageable = Pageable.ofSize(safeSearch.getSize()).withPage(pageNumber);
             } catch (ArithmeticException e) {
-                // Используем пагинацию по умолчанию
                 pageable = Pageable.ofSize(10).withPage(0);
             }
         }
 
         return findCommonEventsByFilters(
-                search.getText(),
-                search.getPaid(),
-                search.getCategories(),
-                search.getRangeStart(),
-                search.getRangeEnd(),
+                safeSearch.getText(),
+                safeSearch.getPaid(),
+                safeSearch.getCategories(),
+                safeSearch.getRangeStart(),
+                safeSearch.getRangeEnd(),
                 sort,
                 pageable);
     }
