@@ -47,11 +47,6 @@ public class CategoryService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Категория с id=" + catId + " не найдена"));
 
-        Long eventsCount = categoryRepository.countEventsByCategoryId(catId);
-        if (eventsCount != null && eventsCount > 0) {
-            throw new ConflictException("Нельзя удалить категорию с привязанными событиями");
-        }
-
         categoryRepository.delete(category);
     }
 

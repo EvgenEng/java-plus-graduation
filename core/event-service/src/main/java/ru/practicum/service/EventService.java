@@ -169,67 +169,36 @@ public class EventService {
                 return Collections.emptyList();
             }
 
-            log.debug("Параметры поиска: text={}, categories={}, paid={}, onlyAvailable={}",
-                    search.getText(), search.getCategories(), search.getPaid(), search.getOnlyAvailable());
-
-            // 2. Устанавливаем значения по умолчанию
-            if (search.getFrom() == null) search.setFrom(0);
-            if (search.getSize() == null) search.setSize(10);
-            if (search.getSort() == null) search.setSort("EVENT_DATE");
-
-            log.debug("После установки значений по умолчанию: from={}, size={}, sort={}",
-                    search.getFrom(), search.getSize(), search.getSort());
+            // 2. Устанавливаем значения по умолчанию в самом объекте search
+            if (search.getFrom() == null) {
+                search.setFrom(0);
+            }
+            if (search.getSize() == null) {
+                search.setSize(10);
+            }
+            if (search.getSort() == null) {
+                search.setSort("EVENT_DATE");
+            }
 
             // 3. Проверяем диапазон дат
             if (search.getRangeStart() != null && search.getRangeEnd() != null) {
                 validateDateRange(search.getRangeStart(), search.getRangeEnd());
             }
 
-            // 4. Вызываем репозиторий
-            log.debug("Вызов репозитория findCommonEventsByFilters");
+            // 4. Вызываем репозиторий с пагинацией
             List<Event> events = eventRepository.findCommonEventsByFilters(search);
-            log.debug("Найдено событий: {}", events.size());
 
-            // 5. Фильтрация по onlyAvailable
-            if (search.getOnlyAvailable() != null && search.getOnlyAvailable()) {
-                log.debug("Применяем фильтр onlyAvailable");
-                events = events.stream()
-                        .filter(event -> {
-                            boolean available = event.getParticipantLimit() == 0 ||
-                                    event.getConfirmedRequests() < event.getParticipantLimit();
-                            log.debug("Событие id={}, participantLimit={}, confirmedRequests={}, available={}",
-                                    event.getId(), event.getParticipantLimit(), event.getConfirmedRequests(), available);
-                            return available;
-                        })
-                        .collect(Collectors.toList());
-                log.debug("После фильтрации onlyAvailable осталось событий: {}", events.size());
-            }
-
-            // 6. Увеличиваем просмотры
+            // 5. Увеличиваем просмотры
             if (!events.isEmpty()) {
-                log.debug("Увеличиваем просмотры для {} событий", events.size());
                 incrementViewsForEvents(events);
             }
 
-            // 7. Маппим в DTO
-            log.debug("Маппим события в DTO");
-            List<EventDto> result = events.stream()
-                    .map(event -> {
-                        try {
-                            return EventMapper.toEventDto(event);
-                        } catch (Exception e) {
-                            log.error("Ошибка при маппинге события id={}: {}", event.getId(), e.getMessage(), e);
-                            throw e;
-                        }
-                    })
+            return events.stream()
+                    .map(EventMapper::toEventDto)
                     .collect(Collectors.toList());
-
-            log.debug("Поиск завершен, найдено {} событий", result.size());
-            return result;
 
         } catch (Exception e) {
             log.error("Ошибка поиска событий: {}", e.getMessage(), e);
-            log.error("StackTrace:", e);
             throw new RuntimeException("Ошибка при поиске событий: " + e.getMessage(), e);
         }
     }
