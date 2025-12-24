@@ -22,8 +22,8 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     boolean existsByIdAndInitiatorId(Long eventId, Long userId);
 
     // 3. Получить количество подтвержденных заявок (для проверки лимита)
-    @Query("SELECT COUNT(pr) FROM ParticipationRequest pr WHERE pr.eventId = :eventId AND pr.status = 'CONFIRMED'")
-    Long countConfirmedRequestsForEvent(@Param("eventId") Long eventId);
+    //@Query("SELECT COUNT(pr) FROM ParticipationRequest pr WHERE pr.eventId = :eventId AND pr.status = 'CONFIRMED'")
+    //Long countConfirmedRequestsForEvent(@Param("eventId") Long eventId);
 
     // 4. Получить событие с минимальной информацией
     @Query("SELECT e.id, e.initiatorId, e.state, e.participantLimit, e.requestModeration FROM Event e WHERE e.id = :eventId")
