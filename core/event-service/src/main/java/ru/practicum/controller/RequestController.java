@@ -39,7 +39,8 @@ public class RequestController {
             @PathVariable Long userId,
             @PathVariable Long eventId,
             @RequestBody RequestStatusUpdateDto updateDto) {
-        log.info("Изменение статуса запросов: userId={}, eventId={}", userId, eventId);
+        log.info("Изменение статуса запросов: userId={}, eventId={}, status={}",
+                userId, eventId, updateDto.getStatus());
 
         RequestStatusUpdateResultDto result = RequestStatusUpdateResultDto.builder()
                 .confirmedRequests(Collections.emptyList())

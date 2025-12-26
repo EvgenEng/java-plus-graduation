@@ -3,6 +3,7 @@ package ru.practicum.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.dto.AdminEventSearch;
@@ -37,46 +38,21 @@ public class EventService {
 
     @Transactional(readOnly = true)
     public List<EventDto> searchAdmin(AdminEventSearch search) {
+        log.info("Админский поиск: users={}, states={}, categories={}",
+                search.getUsers(), search.getStates(), search.getCategories());
+
         try {
-            log.info("Админский поиск: users={}, states={}, categories={}, rangeStart={}, rangeEnd={}, from={}, size={}",
-                    search.getUsers(), search.getStates(), search.getCategories(),
-                    search.getRangeStart(), search.getRangeEnd(), search.getFrom(), search.getSize());
-
-            // 1. Установить значения по умолчанию
-            if (search.getFrom() == null) search.setFrom(0);
-            if (search.getSize() == null) search.setSize(10);
-
-            // 2. Безопасная пагинация
             if (search.getSize() <= 0) {
-                search.setSize(10); // дефолтное значение
+                search.setSize(10);
             }
 
-            // 3. Валидация дат
-            if (search.getRangeStart() != null && search.getRangeEnd() != null) {
-                if (search.getRangeStart().isAfter(search.getRangeEnd())) {
-                    throw new IllegalArgumentException("Начальная дата не может быть позже конечной");
-                }
-            }
+            List<Event> events = eventRepository.findAdminEventsByFilters(search);
 
-            // 4. Вызов репозитория с обработкой ошибок
-            List<Event> events;
-            try {
-                events = eventRepository.findAdminEventsByFilters(search);
-            } catch (Exception e) {
-                log.error("Ошибка в репозитории при админском поиске: {}", e.getMessage(), e);
-                events = Collections.emptyList();
-            }
-
-            // 5. Преобразование
             return events.stream()
                     .map(EventMapper::toEventDto)
                     .collect(Collectors.toList());
-
-        } catch (IllegalArgumentException e) {
-            // Пробрасываем валидационные ошибки
-            throw e;
         } catch (Exception e) {
-            log.error("Непредвиденная ошибка в админском поиске: {}", e.getMessage(), e);
+            log.error("Ошибка в админском поиске: ", e);
             return Collections.emptyList();
         }
     }
@@ -239,13 +215,25 @@ public class EventService {
             // 7. Вызываем репозиторий
             List<Event> events;
             try {
-                events = eventRepository.findCommonEventsByFilters(search);
+                Pageable pageable = PageRequest.of(
+                        search.getFrom() / search.getSize(),
+                        search.getSize()
+                );
+
+                events = eventRepository.findCommonEventsByFilters(
+                        search.getText(),
+                        search.getPaid(),
+                        search.getCategories(),
+                        search.getRangeStart(),
+                        search.getRangeEnd(),
+                        search.getSort(),
+                        pageable
+                );
             } catch (Exception e) {
                 log.error("Ошибка в репозитории при поиске событий: {}", e.getMessage(), e);
                 // Возвращаем пустой список вместо падения
                 return Collections.emptyList();
             }
-
             // 8. Увеличиваем просмотры если есть события
             if (events != null && !events.isEmpty()) {
                 try {

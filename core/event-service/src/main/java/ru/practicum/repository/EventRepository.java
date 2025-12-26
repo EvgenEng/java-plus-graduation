@@ -1,6 +1,7 @@
 package ru.practicum.repository;
 
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -29,16 +30,17 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     @Query("UPDATE Event e SET e.views = e.views + 1 WHERE e.id IN :eventIds")
     void incrementViewsForEvents(@Param("eventIds") List<Long> eventIds);
 
+    // 4. Публичный поиск событий
     @Query("SELECT e FROM Event e " +
-            "WHERE e.state = 'PUBLISHED' " +
-            "AND (:text IS NULL OR " +
-            "     LOWER(e.annotation) LIKE LOWER(CONCAT('%', COALESCE(:text, ''), '%')) " +
-            "     OR LOWER(e.description) LIKE LOWER(CONCAT('%', COALESCE(:text, ''), '%')) " +
-            "     OR LOWER(e.title) LIKE LOWER(CONCAT('%', COALESCE(:text, ''), '%'))) " +
+            "WHERE (:text IS NULL OR " +
+            "      LOWER(e.annotation) LIKE LOWER(CONCAT('%', :text, '%')) " +
+            "      OR LOWER(e.description) LIKE LOWER(CONCAT('%', :text, '%')) " +
+            "      OR LOWER(e.title) LIKE LOWER(CONCAT('%', :text, '%'))) " +
             "AND (:paid IS NULL OR e.paid = :paid) " +
             "AND (:categories IS NULL OR e.categoryId IN :categories) " +
             "AND (:rangeStart IS NULL OR e.eventDate >= :rangeStart) " +
             "AND (:rangeEnd IS NULL OR e.eventDate <= :rangeEnd) " +
+            "AND e.state = 'PUBLISHED' " +
             "ORDER BY " +
             "CASE WHEN :sort = 'EVENT_DATE' THEN e.eventDate END ASC, " +
             "CASE WHEN :sort = 'VIEWS' THEN e.views END DESC")
@@ -51,60 +53,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             @Param("sort") String sort,
             Pageable pageable);
 
-    default List<Event> findCommonEventsByFilters(PublicEventSearch search) {
-        // 1. ОБРАБОТКА ТЕКСТА ДО ПЕРЕДАЧИ В SQL
-        String safeText = search.getText();
-        if (safeText != null) {
-            // ОГРАНИЧИВАЕМ ДЛИНУ ДО 50 СИМВОЛОВ (еще меньше для безопасности!)
-            if (safeText.length() > 50) {
-                safeText = safeText.substring(0, 50);
-            }
-            // УДАЛЯЕМ ОПАСНЫЕ СИМВОЛЫ
-            safeText = safeText.replace("%", "").replace("_", "");
-        }
-
-        // 2. Создаем копию search с безопасным текстом
-        PublicEventSearch safeSearch = new PublicEventSearch();
-        safeSearch.setText(safeText);
-        safeSearch.setPaid(search.getPaid());
-        safeSearch.setCategories(search.getCategories());
-        safeSearch.setRangeStart(search.getRangeStart());
-        safeSearch.setRangeEnd(search.getRangeEnd());
-        safeSearch.setSort(search.getSort());
-        safeSearch.setFrom(search.getFrom());
-        safeSearch.setSize(search.getSize());
-
-        // 3. Устанавливаем значения по умолчанию
-        String sort = safeSearch.getSort() != null ? safeSearch.getSort() : "EVENT_DATE";
-
-        // 4. Проверяем пагинационные параметры
-        Pageable pageable = Pageable.unpaged();
-        if (safeSearch.getFrom() != null && safeSearch.getSize() != null && safeSearch.getSize() > 0) {
-            try {
-                int pageNumber = safeSearch.getFrom() / safeSearch.getSize();
-                pageable = Pageable.ofSize(safeSearch.getSize()).withPage(pageNumber);
-            } catch (ArithmeticException e) {
-                pageable = Pageable.ofSize(10).withPage(0);
-            }
-        }
-
-        // 5. Обернуть вызов в try-catch!
-        try {
-            return findCommonEventsByFilters(
-                    safeSearch.getText(),
-                    safeSearch.getPaid(),
-                    safeSearch.getCategories(),
-                    safeSearch.getRangeStart(),
-                    safeSearch.getRangeEnd(),
-                    sort,
-                    pageable);
-        } catch (Exception e) {
-            // Логируем ошибку где-то в другом месте, здесь просто возвращаем пустой список
-            // чтобы не было 500 ошибки
-            return java.util.Collections.emptyList();
-        }
-    }
-
+    // 5. Админский поиск событий
     @Query("SELECT e FROM Event e " +
             "WHERE (:users IS NULL OR e.initiatorId IN :users) " +
             "AND (:states IS NULL OR e.state IN :states) " +
@@ -120,23 +69,28 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             @Param("rangeEnd") LocalDateTime rangeEnd,
             Pageable pageable);
 
+    // 6. Default метод для админского поиска
     default List<Event> findAdminEventsByFilters(AdminEventSearch search) {
-        Pageable pageable = Pageable.unpaged();
-        if (search.getFrom() != null && search.getSize() != null && search.getSize() > 0) {
-            try {
-                int pageNumber = search.getFrom() / search.getSize();
-                pageable = Pageable.ofSize(search.getSize()).withPage(pageNumber);
-            } catch (ArithmeticException e) {
-                pageable = Pageable.ofSize(10).withPage(0);
-            }
+        if (search.getSize() == null || search.getSize() <= 0) {
+            search.setSize(10);
         }
+        if (search.getFrom() == null || search.getFrom() < 0) {
+            search.setFrom(0);
+        }
+
+        PageRequest pageRequest = PageRequest.of(
+                search.getFrom() / search.getSize(),
+                search.getSize()
+        );
+
         return findAdminEventsByFilters(
                 search.getUsers(),
                 search.getStates(),
                 search.getCategories(),
                 search.getRangeStart(),
                 search.getRangeEnd(),
-                pageable);
+                pageRequest
+        );
     }
 
     List<Event> findAllByInitiatorIdOrderByEventDateDesc(Long initiatorId, Pageable pageable);
