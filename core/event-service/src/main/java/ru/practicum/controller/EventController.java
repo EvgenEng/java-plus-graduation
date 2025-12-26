@@ -22,6 +22,7 @@ import ru.practicum.dto.UpdateEventDto;
 import ru.practicum.service.EventService;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 
 @Slf4j
@@ -41,13 +42,11 @@ public class EventController {
             @RequestParam(required = false, defaultValue = "0") Integer from,
             @RequestParam(required = false, defaultValue = "10") Integer size) {
 
-        log.info("Админский поиск событий: users={}, states={}, categories={}, from={}, size={}",
-                users, states, categories, from, size);
-
-        if (from == null) from = 0;
-        if (size == null) size = 10;
-        if (size <= 0) {
-            throw new IllegalArgumentException("Параметр size должен быть больше 0");
+        if (size == null || size <= 0) {
+            size = 10;
+        }
+        if (from == null || from < 0) {
+            from = 0;
         }
 
         AdminEventSearch search = AdminEventSearch.builder()
@@ -60,8 +59,13 @@ public class EventController {
                 .size(size)
                 .build();
 
-        List<EventDto> events = eventService.searchAdmin(search);
-        return ResponseEntity.ok(events);
+        try {
+            List<EventDto> events = eventService.searchAdmin(search);
+            return ResponseEntity.ok(events);
+        } catch (Exception e) {
+            log.error("Ошибка в админском поиске", e);
+            return ResponseEntity.ok(Collections.emptyList());
+        }
     }
 
     // Обновление события администратором
@@ -85,6 +89,7 @@ public class EventController {
 
         log.info("Получение событий пользователя: userId={}, from={}, size={}", userId, from, size);
 
+        // Проверяем параметры пагинации
         if (from == null) from = 0;
         if (size == null) size = 10;
         if (size <= 0) {
@@ -160,9 +165,10 @@ public class EventController {
         log.info("Публичный поиск событий: text={}, categories={}, paid={}, onlyAvailable={}, sort={}, from={}, size={}",
                 text, categories, paid, onlyAvailable, sort, from, size);
 
-        if (sort == null) sort = "EVENT_DATE";
+        // Проверяем параметры пагинации
         if (from == null) from = 0;
         if (size == null) size = 10;
+        if (sort == null) sort = "EVENT_DATE";
 
         if (size <= 0) {
             throw new IllegalArgumentException("Параметр size должен быть больше 0");
