@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ru.practicum.dto.UserDto;
 import ru.practicum.exception.ConflictException;
+import ru.practicum.exception.NotFoundException;
 import ru.practicum.mapper.UserMapper;
 import ru.practicum.model.User;
 import ru.practicum.repository.UserRepository;
@@ -34,7 +35,7 @@ public class UserService {
 
     public void delete(Long userId) {
         userRepository.findById(userId).orElseThrow(() ->
-                new ru.practicum.exception.NotFoundException(
+                new NotFoundException(
                         "Пользователь с id=" + userId + " не найден")
         );
         userRepository.deleteById(userId);

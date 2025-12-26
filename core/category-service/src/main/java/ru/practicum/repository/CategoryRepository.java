@@ -10,13 +10,18 @@ import java.util.List;
 
 public interface CategoryRepository extends JpaRepository<Category, Long> {
 
-    @Query("SELECT c FROM categories c ORDER BY c.id ASC")
+    @Query("SELECT c FROM Category c ORDER BY c.id ASC")
     List<Category> findAllCategories(Pageable pageable);
 
     default List<Category> findAllCategories(Integer from, Integer size) {
         Pageable pageable = Pageable.unpaged();
-        if (from != null && size != null) {
-            pageable = Pageable.ofSize(size).withPage(from / size);
+        if (from != null && size != null && size > 0) {
+            try {
+                int pageNumber = from / size;
+                pageable = Pageable.ofSize(size).withPage(pageNumber);
+            } catch (ArithmeticException e) {
+                pageable = Pageable.ofSize(10).withPage(0);
+            }
         }
         return findAllCategories(pageable);
     }
