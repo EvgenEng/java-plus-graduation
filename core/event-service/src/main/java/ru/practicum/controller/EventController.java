@@ -22,7 +22,6 @@ import ru.practicum.dto.UpdateEventDto;
 import ru.practicum.service.EventService;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 
 @Slf4j
