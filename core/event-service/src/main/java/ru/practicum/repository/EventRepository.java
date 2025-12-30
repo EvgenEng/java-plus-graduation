@@ -26,7 +26,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     @Query("SELECT e.id, e.initiatorId, e.state, e.participantLimit, e.requestModeration FROM Event e WHERE e.id = :eventId")
     Object[] findEventInfoById(@Param("eventId") Long eventId);
 
-    @Modifying
+    /*@Modifying
     @Query("UPDATE Event e SET e.views = e.views + 1 WHERE e.id IN :eventIds")
     void incrementViewsForEvents(@Param("eventIds") List<Long> eventIds);
 
@@ -44,6 +44,33 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             "ORDER BY " +
             "CASE WHEN :sort = 'EVENT_DATE' THEN e.eventDate END ASC, " +
             "CASE WHEN :sort = 'VIEWS' THEN e.views END DESC")
+    List<Event> findCommonEventsByFilters(
+            @Param("text") String text,
+            @Param("paid") Boolean paid,
+            @Param("categories") List<Long> categories,
+            @Param("rangeStart") LocalDateTime rangeStart,
+            @Param("rangeEnd") LocalDateTime rangeEnd,
+            @Param("sort") String sort,
+            Pageable pageable);
+    */
+
+    @Modifying
+    @Query("UPDATE Event e SET e.views = e.views + 1 WHERE e.id IN :eventIds AND e.state = 'PUBLISHED'")
+    void incrementViewsForEvents(@Param("eventIds") List<Long> eventIds);
+
+    @Query("SELECT e FROM Event e " +
+            "WHERE (:text IS NULL OR LOWER(e.annotation) LIKE LOWER(CONCAT('%', :text, '%')) " +
+            "OR LOWER(e.description) LIKE LOWER(CONCAT('%', :text, '%')) " +
+            "OR LOWER(e.title) LIKE LOWER(CONCAT('%', :text, '%'))) " +
+            "AND (:paid IS NULL OR e.paid = :paid) " +
+            "AND (:categories IS NULL OR e.categoryId IN :categories) " +
+            "AND (:rangeStart IS NULL OR e.eventDate >= :rangeStart) " +
+            "AND (:rangeEnd IS NULL OR e.eventDate <= :rangeEnd) " +
+            "AND e.state = 'PUBLISHED' " +
+            "ORDER BY " +
+            "CASE WHEN :sort = 'EVENT_DATE' THEN e.eventDate END ASC, " +
+            "CASE WHEN :sort = 'VIEWS' THEN e.eventDate END ASC, " +
+            "e.id ASC")
     List<Event> findCommonEventsByFilters(
             @Param("text") String text,
             @Param("paid") Boolean paid,

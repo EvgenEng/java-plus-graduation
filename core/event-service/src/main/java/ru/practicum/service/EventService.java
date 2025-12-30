@@ -155,6 +155,7 @@ public class EventService {
         return EventMapper.toEventDto(updatedEvent);
     }
 
+    /*
     @Transactional(readOnly = true)
     public List<EventDto> searchCommon(PublicEventSearch search) {
         log.info("Поиск событий с фильтрами: text.length={}, categories={}, paid={}, sort={}, from={}, size={}",
@@ -265,6 +266,122 @@ public class EventService {
             return Collections.emptyList();
         }
     }
+    */
+    @Transactional(readOnly = true)
+    public List<EventDto> searchCommon(PublicEventSearch search) {
+        log.info("Публичный поиск событий с параметрами: text={}, categories={}, paid={}, rangeStart={}, rangeEnd={}, sort={}, from={}, size={}, onlyAvailable={}",
+                search.getText(), search.getCategories(), search.getPaid(),
+                search.getRangeStart(), search.getRangeEnd(), search.getSort(),
+                search.getFrom(), search.getSize(), search.getOnlyAvailable());
+
+        try {
+            // 1. Проверка обязательных параметров
+            if (search.getFrom() == null || search.getFrom() < 0) {
+                search.setFrom(0);
+            }
+            if (search.getSize() == null || search.getSize() <= 0) {
+                search.setSize(10);
+            }
+            if (search.getSort() == null || search.getSort().isEmpty()) {
+                search.setSort("EVENT_DATE");
+            }
+
+            // 2. Валидация диапазона дат
+            if (search.getRangeStart() != null && search.getRangeEnd() != null) {
+                if (search.getRangeStart().isAfter(search.getRangeEnd())) {
+                    throw new IllegalArgumentException("Начальная дата не может быть позже конечной");
+                }
+            }
+
+            // 3. Если не указана дата начала, использовать текущее время
+            LocalDateTime rangeStart = search.getRangeStart();
+            if (rangeStart == null && search.getRangeEnd() == null) {
+                rangeStart = LocalDateTime.now();
+            }
+
+            // 4. Подготовка параметров для запроса
+            String text = (search.getText() != null && !search.getText().trim().isEmpty())
+                    ? search.getText().trim()
+                    : null;
+
+            Boolean paid = search.getPaid();
+            List<Long> categories = search.getCategories();
+            LocalDateTime rangeEnd = search.getRangeEnd();
+            String sort = search.getSort();
+            Boolean onlyAvailable = search.getOnlyAvailable();
+
+            // 5. Проверка только опубликованных событий
+            String state = "PUBLISHED";
+
+            // 6. Создание пагинации
+            Pageable pageable = PageRequest.of(
+                    search.getFrom() / search.getSize(),
+                    search.getSize()
+            );
+
+            // 7. Выполнение поиска
+            List<Event> events;
+            try {
+                // Используем базовый метод без onlyAvailable
+                events = eventRepository.findCommonEventsByFilters(
+                        text,
+                        paid,
+                        categories,
+                        rangeStart,
+                        rangeEnd,
+                        sort,
+                        pageable
+                );
+
+                // 8. Фильтрация по доступности (onlyAvailable)
+                if (onlyAvailable != null && onlyAvailable) {
+                    events = events.stream()
+                            .filter(event -> {
+                                if (event.getParticipantLimit() == 0) {
+                                    return true; // нет лимита
+                                }
+                                if (event.getConfirmedRequests() == null) {
+                                    return true; // нет подтвержденных запросов
+                                }
+                                return event.getConfirmedRequests() < event.getParticipantLimit();
+                            })
+                            .collect(Collectors.toList());
+                }
+
+            } catch (Exception e) {
+                log.error("Ошибка при поиске событий: {}", e.getMessage(), e);
+                return Collections.emptyList();
+            }
+
+            // 9. Увеличение просмотров (только для опубликованных событий)
+            if (!events.isEmpty()) {
+                try {
+                    List<Long> eventIds = events.stream()
+                            .map(Event::getId)
+                            .collect(Collectors.toList());
+
+                    eventRepository.incrementViewsForEvents(eventIds);
+
+                    // Обновляем объекты events с увеличенными просмотрами
+                    events = eventRepository.findAllById(eventIds);
+                } catch (Exception e) {
+                    log.warn("Не удалось увеличить просмотры: {}", e.getMessage());
+                }
+            }
+
+            // 10. Преобразование в DTO
+            return events.stream()
+                    .map(EventMapper::toEventDto)
+                    .collect(Collectors.toList());
+
+        } catch (IllegalArgumentException e) {
+            log.warn("Некорректные параметры запроса: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("Ошибка в searchCommon: {}", e.getMessage(), e);
+            return Collections.emptyList();
+        }
+    }
 
     @Transactional
     public void incrementViewsForEvents(List<Event> events) {
@@ -281,7 +398,7 @@ public class EventService {
         }
     }
 
-    @Transactional(readOnly = true)
+    /*@Transactional(readOnly = true)
     public EventDto findById(Long eventId) {
         Event event = eventRepository.findPublishedById(eventId);
         if (event == null) {
@@ -292,6 +409,28 @@ public class EventService {
         // Увеличиваем счетчик просмотров
         event.setViews(event.getViews() + 1);
         eventRepository.save(event);
+
+        return EventMapper.toEventDto(event);
+    }
+     */
+    @Transactional(readOnly = true)
+    public EventDto findById(Long eventId) {
+        Event event = eventRepository.findPublishedById(eventId);
+        if (event == null) {
+            throw new EntityNotFoundException(
+                    "Событие с id=" + eventId + " не найдено или не опубликовано");
+        }
+
+        try {
+            // Увеличиваем счетчик просмотров
+            event.setViews(event.getViews() + 1);
+            eventRepository.save(event);
+
+            // Обновляем объект из БД
+            event = eventRepository.findById(eventId).orElse(event);
+        } catch (Exception e) {
+            log.warn("Не удалось увеличить просмотры для события {}: {}", eventId, e.getMessage());
+        }
 
         return EventMapper.toEventDto(event);
     }
