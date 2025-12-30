@@ -40,7 +40,7 @@ public class RequestController {
     }
 
     // Изменение статуса заявок на участие в событии
-    @PatchMapping("/{userId}/events/{eventId}/requests")
+    /*@PatchMapping("/{userId}/events/{eventId}/requests")
     public ResponseEntity<EventRequestStatusUpdateResult> updateParticipationRequestStatus(
             @PathVariable Long userId,
             @PathVariable Long eventId,
@@ -48,6 +48,21 @@ public class RequestController {
 
         log.info("Обновление статуса заявок: userId={}, eventId={}", userId, eventId);
 
+        EventRequestStatusUpdateResult result =
+                participationRequestService.updateStatus(userId, eventId, requestDto);
+        return ResponseEntity.ok(result);
+    }*/
+    // Изменение статуса заявок на участие в событии
+    @PatchMapping("/{userId}/events/{eventId}/requests")
+    public ResponseEntity<EventRequestStatusUpdateResult> updateParticipationRequestStatus(
+            @PathVariable Long userId,
+            @PathVariable Long eventId,
+            @Valid @RequestBody EventRequestStatusUpdateRequest requestDto) {
+
+        log.info("Обновление статуса заявок: userId={}, eventId={}, status={}",
+                userId, eventId, requestDto.getStatus());
+
+        // ★★★★ ИСПОЛЬЗУЙ participationRequestService, а не requestService ★★★★
         EventRequestStatusUpdateResult result =
                 participationRequestService.updateStatus(userId, eventId, requestDto);
         return ResponseEntity.ok(result);

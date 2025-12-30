@@ -1,17 +1,20 @@
 package ru.practicum.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.dto.CategoryDto;
 import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.EntityNotFoundException;
+import ru.practicum.exception.NotFoundException;
 import ru.practicum.mapper.CategoryMapper;
 import ru.practicum.model.Category;
 import ru.practicum.repository.CategoryRepository;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CategoryService {
@@ -23,11 +26,18 @@ public class CategoryService {
                 .toList();
     }
 
-    public CategoryDto getCategoryById(Long catId) {
+    /*public CategoryDto getCategoryById(Long catId) {
         Category category = categoryRepository.findById(catId)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Категория с id=" + catId + " не найдена"));
         return CategoryMapper.toCategoryDto(category);
+    }
+     */
+    public CategoryDto getCategoryById(Long catId) {
+        Category category = categoryRepository.findById(catId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Категория с id=" + catId + " не найдена"));
+        return CategoryMapper.toCategoryDto(category); // ★ Используй toCategoryDto
     }
 
     @Transactional
@@ -41,13 +51,27 @@ public class CategoryService {
         return CategoryMapper.toCategoryDto(categoryRepository.save(category));
     }
 
-    @Transactional
+    /*@Transactional
     public void deleteCategory(Long catId) {
         Category category = categoryRepository.findById(catId)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Категория с id=" + catId + " не найдена"));
 
         categoryRepository.delete(category);
+    }
+    */
+    @Transactional
+    public void deleteCategory(Long catId) {
+        log.info("Удаление категории: id={}", catId);
+
+        Category category = categoryRepository.findById(catId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Категория с id=" + catId + " не найдена"));
+
+        boolean hasEvents = categoryRepository.existsById(catId);
+
+        throw new ConflictException(
+                "Нельзя удалить категорию с привязанными событиями");
     }
 
     @Transactional
