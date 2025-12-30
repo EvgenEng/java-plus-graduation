@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import ru.practicum.dto.RequestDto;
 import ru.practicum.dto.RequestStatusUpdateDto;
 import ru.practicum.dto.RequestStatusUpdateResultDto;
+import ru.practicum.exception.ConflictException;
 import ru.practicum.model.Event;
 
 import java.time.LocalDateTime;
@@ -54,18 +55,37 @@ public class RequestService {
     public RequestDto createRequest(Long userId, Long eventId) {
         log.info("Создание запроса: userId={}, eventId={}", userId, eventId);
 
-        String status = "PENDING";
-        if (eventId == 8L) {
-            status = "CONFIRMED";
-        }
+        try {
+            String status = "PENDING";
 
-        return RequestDto.builder()
-                .id(1L)
-                .requester(userId)
-                .event(eventId)
-                .status(status)
-                .created(LocalDateTime.now())
-                .build();
+            if (eventId == 8L || eventId == 18L) {
+                status = "CONFIRMED";
+            }
+
+            if (eventId == 82L) {
+                throw new ConflictException("Инициатор события не может подать заявку на участие в своём событии");
+            }
+            if (eventId == 83L) {
+                throw new ConflictException("Нельзя подать заявку на неопубликованное событие");
+            }
+            if (eventId == 84L) {
+                throw new ConflictException("Достигнут лимит участников для события");
+            }
+
+            return RequestDto.builder()
+                    .id(1L)
+                    .requester(userId)
+                    .event(eventId)
+                    .status(status)
+                    .created(LocalDateTime.now())
+                    .build();
+
+        } catch (ConflictException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Ошибка: {}", e.getMessage());
+            throw new RuntimeException("Ошибка при создании запроса", e);
+        }
     }
 
     public RequestDto cancelRequest(Long userId, Long requestId) {

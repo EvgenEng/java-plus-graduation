@@ -37,7 +37,7 @@ public class CategoryService {
         Category category = categoryRepository.findById(catId)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Категория с id=" + catId + " не найдена"));
-        return CategoryMapper.toCategoryDto(category); // ★ Используй toCategoryDto
+        return CategoryMapper.toCategoryDto(category);
     }
 
     @Transactional
@@ -51,13 +51,26 @@ public class CategoryService {
         return CategoryMapper.toCategoryDto(categoryRepository.save(category));
     }
 
-    @Transactional
+    /*@Transactional
     public void deleteCategory(Long catId) {
         Category category = categoryRepository.findById(catId)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Категория с id=" + catId + " не найдена"));
 
         categoryRepository.delete(category);
+    }*/
+    @Transactional
+    public void deleteCategory(Long catId) {
+        log.info("Удаление категории: id={}", catId);
+
+        // 1. Проверяем существование
+        Category category = categoryRepository.findById(catId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Категория с id=" + catId + " не найдена"));
+
+        // 2. Удаление
+        categoryRepository.delete(category);
+        log.info("Категория удалена: id={}", catId);
     }
 
     @Transactional
