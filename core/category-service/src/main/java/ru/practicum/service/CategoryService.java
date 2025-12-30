@@ -51,27 +51,13 @@ public class CategoryService {
         return CategoryMapper.toCategoryDto(categoryRepository.save(category));
     }
 
-    /*@Transactional
+    @Transactional
     public void deleteCategory(Long catId) {
         Category category = categoryRepository.findById(catId)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Категория с id=" + catId + " не найдена"));
 
         categoryRepository.delete(category);
-    }
-    */
-    @Transactional
-    public void deleteCategory(Long catId) {
-        log.info("Удаление категории: id={}", catId);
-
-        Category category = categoryRepository.findById(catId)
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "Категория с id=" + catId + " не найдена"));
-
-        boolean hasEvents = categoryRepository.existsById(catId);
-
-        throw new ConflictException(
-                "Нельзя удалить категорию с привязанными событиями");
     }
 
     @Transactional
