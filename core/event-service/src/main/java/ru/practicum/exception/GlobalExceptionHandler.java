@@ -136,7 +136,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 
-    @ExceptionHandler(RuntimeException.class)
+    /*@ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorResponseDto> handleRuntimeException(RuntimeException ex) {
         log.error("Runtime error: {}", ex.getMessage(), ex);
 
@@ -154,6 +154,33 @@ public class GlobalExceptionHandler {
                 .statusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .build();
 
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }*/
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ErrorResponseDto> handleRuntimeException(RuntimeException ex) {
+        log.error("Runtime error: {}", ex.getMessage(), ex);
+
+        // Возвращаем соответствующий статус
+        if (ex instanceof IllegalArgumentException) {
+            // Возвращаем 400, а не бросаем снова
+            ErrorResponseDto error = ErrorResponseDto.builder()
+                    .status("error")
+                    .error("Bad Request")
+                    .message(ex.getMessage())
+                    .timestamp(LocalDateTime.now())
+                    .statusCode(HttpStatus.BAD_REQUEST.value())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
+
+        // Для остальных RuntimeException возвращаем 500
+        ErrorResponseDto error = ErrorResponseDto.builder()
+                .status("error")
+                .error("Internal Server Error")
+                .message("Произошла внутренняя ошибка сервера")
+                .timestamp(LocalDateTime.now())
+                .statusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                .build();
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 }

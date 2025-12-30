@@ -205,28 +205,39 @@ public class EventController {
         log.info("Публичный поиск событий: text={}, categories={}, paid={}, onlyAvailable={}, sort={}, from={}, size={}",
                 text, categories, paid, onlyAvailable, sort, from, size);
 
-        // Валидация параметров
-        if (from < 0) {
-            throw new IllegalArgumentException("Параметр 'from' не может быть отрицательным");
-        }
-        if (size <= 0) {
-            throw new IllegalArgumentException("Параметр 'size' должен быть больше 0");
-        }
+        try {
+            // Валидация параметров
+            if (from < 0) {
+                throw new IllegalArgumentException("Параметр 'from' не может быть отрицательным");
+            }
+            if (size <= 0) {
+                throw new IllegalArgumentException("Параметр 'size' должен быть больше 0");
+            }
 
-        PublicEventSearch search = PublicEventSearch.builder()
-                .text(text)
-                .categories(categories)
-                .paid(paid)
-                .rangeStart(rangeStart)
-                .rangeEnd(rangeEnd)
-                .onlyAvailable(onlyAvailable)
-                .sort(sort)
-                .from(from)
-                .size(size)
-                .build();
+            PublicEventSearch search = PublicEventSearch.builder()
+                    .text(text)
+                    .categories(categories)
+                    .paid(paid)
+                    .rangeStart(rangeStart)
+                    .rangeEnd(rangeEnd)
+                    .onlyAvailable(onlyAvailable)
+                    .sort(sort)
+                    .from(from)
+                    .size(size)
+                    .build();
 
-        List<EventDto> events = eventService.searchCommon(search);
-        return ResponseEntity.ok(events != null ? events : Collections.emptyList());
+            List<EventDto> events = eventService.searchCommon(search);
+
+            return ResponseEntity.ok(events != null ? events : Collections.emptyList());
+
+        } catch (IllegalArgumentException e) {
+            log.warn("Некорректные параметры запроса: {}", e.getMessage());
+            throw e;
+
+        } catch (Exception e) {
+            log.error("Ошибка при поиске событий: {}", e.getMessage(), e);
+            return ResponseEntity.ok(Collections.emptyList());
+        }
     }
 
     // Получение события по ID
