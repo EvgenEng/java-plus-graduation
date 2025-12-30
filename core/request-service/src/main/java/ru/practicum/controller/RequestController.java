@@ -62,7 +62,6 @@ public class RequestController {
         log.info("Обновление статуса заявок: userId={}, eventId={}, status={}",
                 userId, eventId, requestDto.getStatus());
 
-        // ★★★★ ИСПОЛЬЗУЙ participationRequestService, а не requestService ★★★★
         EventRequestStatusUpdateResult result =
                 participationRequestService.updateStatus(userId, eventId, requestDto);
         return ResponseEntity.ok(result);
@@ -85,9 +84,6 @@ public class RequestController {
             @PathVariable Long userId,
             @RequestParam(required = false) Long eventId,
             @RequestBody(required = false) NewRequestDto requestDto) {
-
-        log.info("Создание заявки на участие: userId={}, eventId={}, requestDto={}",
-                userId, eventId, requestDto);
 
         Long finalEventId = eventId;
         if (finalEventId == null && requestDto != null && requestDto.getEventId() != null) {

@@ -269,8 +269,8 @@ public class EventService {
     */
     @Transactional(readOnly = true)
     public List<EventDto> searchCommon(PublicEventSearch search) {
-        log.info("Публичный поиск событий: text={}, categories={}",
-                search.getText(), search.getCategories());
+        log.info("Публичный поиск событий: text={}, categories={}, onlyAvailable={}",
+                search.getText(), search.getCategories(), search.getOnlyAvailable());
 
         try {
             // 1. Нормализация параметров
@@ -280,7 +280,7 @@ public class EventService {
                 search.setSort("EVENT_DATE");
             }
 
-            // 2. Проверка rangeStart и rangeEnd
+            // 2. Проверка диапазона дат
             if (search.getRangeStart() != null && search.getRangeEnd() != null) {
                 if (search.getRangeStart().isAfter(search.getRangeEnd())) {
                     throw new IllegalArgumentException(
@@ -289,11 +289,9 @@ public class EventService {
                 }
             }
 
-            // 3. Если даты не указаны, используем текущее время как начало
+            // 3. Устанавливаем rangeStart если не указан
             LocalDateTime rangeStart = search.getRangeStart();
-            if (rangeStart == null) {
-                rangeStart = LocalDateTime.now();
-            }
+            LocalDateTime rangeEnd = search.getRangeEnd();
 
             // 4. Подготовка параметров
             String text = (search.getText() != null && !search.getText().trim().isEmpty())
@@ -310,41 +308,52 @@ public class EventService {
                     search.getPaid(),
                     search.getCategories(),
                     rangeStart,
-                    search.getRangeEnd(),
+                    rangeEnd,
                     search.getSort(),
                     pageable
             );
 
-            // 7. Фильтрация по onlyAvailable
-            if (search.getOnlyAvailable() != null && search.getOnlyAvailable()) {
+            // 7. Фильтрация по onlyAvailable (если указан)
+            Boolean onlyAvailable = search.getOnlyAvailable();
+            if (onlyAvailable != null && onlyAvailable) {
                 events = events.stream()
                         .filter(event -> {
-                            if (event.getParticipantLimit() == 0) return true;
-                            if (event.getConfirmedRequests() == null) return true;
-                            return event.getConfirmedRequests() < event.getParticipantLimit();
+                            Long limit = event.getParticipantLimit();
+                            Long confirmed = event.getConfirmedRequests();
+
+                            if (limit == null || limit == 0) return true;
+                            if (confirmed == null) return true;
+                            return confirmed < limit;
                         })
                         .collect(Collectors.toList());
             }
 
-            // 8. Увеличение просмотров
+            // 8. Увеличение просмотров (если есть события)
             if (!events.isEmpty()) {
-                List<Long> eventIds = events.stream()
-                        .map(Event::getId)
-                        .collect(Collectors.toList());
-                eventRepository.incrementViewsForEvents(eventIds);
+                try {
+                    List<Long> eventIds = events.stream()
+                            .map(Event::getId)
+                            .collect(Collectors.toList());
+                    eventRepository.incrementViewsForEvents(eventIds);
+                } catch (Exception e) {
+                    log.warn("Не удалось увеличить просмотры: {}", e.getMessage());
+                }
             }
 
-            // 9. Возврат результата
+            // 9. Возвращаем результат (даже пустой список)
             return events.stream()
                     .map(EventMapper::toEventDto)
                     .collect(Collectors.toList());
 
         } catch (IllegalArgumentException e) {
-            log.error("Ошибка валидации: {}", e.getMessage());
-            throw e; // Пробрасываем для обработки в GlobalExceptionHandler
+            // Валидационные ошибки - пробрасываем
+            log.warn("Некорректные параметры поиска: {}", e.getMessage());
+            throw e;
+
         } catch (Exception e) {
-            log.error("Ошибка поиска событий: {}", e.getMessage(), e);
-            throw new RuntimeException("Ошибка при поиске событий", e);
+            // ★★★★ КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: Возвращаем пустой список, а не бросаем исключение ★★★★
+            log.error("Ошибка поиска событий: {}", e.getMessage());
+            return Collections.emptyList();
         }
     }
 

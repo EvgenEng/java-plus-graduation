@@ -1,5 +1,6 @@
 package ru.practicum.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -38,7 +39,7 @@ public class RequestController {
     public ResponseEntity<RequestStatusUpdateResultDto> updateRequestStatus(
             @PathVariable Long userId,
             @PathVariable Long eventId,
-            @RequestBody RequestStatusUpdateDto updateDto) {
+            @Valid @RequestBody RequestStatusUpdateDto updateDto) { // ← ДОБАВЬ @Valid
         log.info("Изменение статуса запросов: userId={}, eventId={}, status={}",
                 userId, eventId, updateDto.getStatus());
 
