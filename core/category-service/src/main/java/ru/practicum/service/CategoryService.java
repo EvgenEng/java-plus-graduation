@@ -61,7 +61,6 @@ public class CategoryService {
     }*/
     @Transactional
     public void deleteCategory(Long catId) {
-        log.info("Удаление категории: id={}", catId);
 
         // 1. Проверяем существование
         Category category = categoryRepository.findById(catId)
@@ -70,7 +69,6 @@ public class CategoryService {
 
         // 2. Удаление
         categoryRepository.delete(category);
-        log.info("Категория удалена: id={}", catId);
     }
 
     @Transactional

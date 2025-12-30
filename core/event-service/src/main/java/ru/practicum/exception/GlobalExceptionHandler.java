@@ -110,13 +110,26 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
-    @ExceptionHandler(ConflictException.class)
+    /*@ExceptionHandler(ConflictException.class)
     public ResponseEntity<ErrorResponseDto> handleConflict(ConflictException ex) {
         ErrorResponseDto error = ErrorResponseDto.builder()
                 .status("CONFLICT")
                 .error("Conflict")
                 .message(ex.getMessage())
                 .timestamp(LocalDateTime.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }*/
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ErrorResponseDto> handleConflict(ConflictException ex) {
+        log.warn("Conflict: {}", ex.getMessage());
+
+        ErrorResponseDto error = ErrorResponseDto.builder()
+                .status("error")
+                .error("Conflict")
+                .message(ex.getMessage())
+                .timestamp(LocalDateTime.now())
+                .statusCode(HttpStatus.CONFLICT.value())
                 .build();
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
