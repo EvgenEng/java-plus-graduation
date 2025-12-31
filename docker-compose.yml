@@ -1,71 +1,45 @@
 services:
-  # Базы данных (оставляем как есть)
-  stats-db:
-    image: postgres:16.1
-    # ... существующие настройки
-
   ewm-db:
     image: postgres:16.1
-    # ... существующие настройки
-
-  # Сервис обнаружения (Eureka)
-  discovery-server:
-    build: ./infra/discovery-server
-    image: ewm-discovery-server
-    container_name: "ewm-discovery-server"
-    ports:
-      - "8761:8761"
-    depends_on:
-      - stats-db
-      - ewm-db
-
-  # Сервер конфигураций (Native - конфиги внутри проекта)
-  config-server:
-    build: ./infra/config-server
-    image: ewm-config-server
-    container_name: "ewm-config-server"
-    ports:
-      - "8888:8888"
-    depends_on:
-      - discovery-server
-
-  # API Gateway
-  gateway-server:
-    build: ./infra/gateway-server
-    image: ewm-gateway-server
-    container_name: "ewm-gateway-server"
-    ports:
-      - "8080:8080"
-    depends_on:
-      - config-server
-      - discovery-server
+    container_name: "ewm-main-db"
     environment:
-      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
-
-  # Сервис статистики
-  stats-server:
-    build: ./stats/stats-server
-    image: ewm-stats-server
-    container_name: "ewm-stats-server"
+      POSTGRES_DB: ewm_main_db
+      POSTGRES_USER: ewm_user
+      POSTGRES_PASSWORD: ewm_password
     ports:
-      - "9090:9090"
-    depends_on:
-      - config-server
-      - discovery-server
-      - stats-db
-    environment:
-      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - "5432:5432"
+    volumes:
+      - ewm-data:/var/lib/postgresql/data
+      - ./core/user-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-user-schema.sql
+      - ./core/category-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/02-category-schema.sql
+      - ./core/event-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/03-event-schema.sql
+      - ./core/request-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/04-request-schema.sql
+      - ./core/compilation-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/05-compilation-schema.sql
+      - ./core/comment-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/06-comment-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ewm_user -d ewm_main_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Основной сервис
-  ewm-service:
-    build: ./core/main-service
-    image: ewm-main-service
-    container_name: "ewm-main-service"
-    ports:
-      - "8081:8081"
-    depends_on:
-      - config-server
-      - discovery-server
-      - ewm-db
+  stats-db:
+    image: postgres:16.1
+    container_name: "stats-db"
     environment:
-      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      POSTGRES_DB: ewm_stats_db
+      POSTGRES_USER: stat_user
+      POSTGRES_PASSWORD: stat_password
+    ports:
+      - "6542:5432"
+    volumes:
+      - stats-data:/var/lib/postgresql/data
+      - ./stats/stats-server/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-stats-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stat_user -d ewm_stats_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  ewm-data:
+  stats-data:
