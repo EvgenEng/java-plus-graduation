@@ -267,8 +267,7 @@ public class EventService {
         }
     }
     */
-
-    /*@Transactional(readOnly = true)
+    @Transactional(readOnly = true)
     public List<EventDto> searchCommon(PublicEventSearch search) {
         log.info("Публичный поиск событий: text={}, categories={}, onlyAvailable={}",
                 search.getText(), search.getCategories(), search.getOnlyAvailable());
@@ -355,19 +354,6 @@ public class EventService {
             // ★★★★ КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: Возвращаем пустой список, а не бросаем исключение ★★★★
             log.error("Ошибка поиска событий: {}", e.getMessage());
             return Collections.emptyList();
-        }
-    }*/
-    @Transactional(readOnly = true)
-    public List<EventDto> searchCommon(PublicEventSearch search) {
-        log.info("Поиск событий с фильтрами...");
-
-        try {
-            // Всегда возвращаем пустой список
-            return Collections.emptyList();
-
-        } catch (Exception e) {
-            log.error("Ошибка поиска: {}", e.getMessage());
-            return Collections.emptyList(); // ★ ВСЕГДА возвращаем пустой список
         }
     }
 

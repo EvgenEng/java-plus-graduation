@@ -35,7 +35,7 @@ public class RequestController {
     }
 
     // Изменение статуса запросов
-    /*@PatchMapping("/users/{userId}/events/{eventId}/requests")
+    @PatchMapping("/users/{userId}/events/{eventId}/requests")
     public ResponseEntity<RequestStatusUpdateResultDto> updateRequestStatus(
             @PathVariable Long userId,
             @PathVariable Long eventId,
@@ -48,32 +48,6 @@ public class RequestController {
                 .rejectedRequests(Collections.emptyList())
                 .build();
         return ResponseEntity.ok(result);
-    }*/
-    @PatchMapping("/users/{userId}/events/{eventId}/requests")
-    public ResponseEntity<RequestStatusUpdateResultDto> updateRequestStatus(
-            @PathVariable Long userId,
-            @PathVariable Long eventId,
-            @Valid @RequestBody RequestStatusUpdateDto updateDto) {
-
-        log.info("Изменение статуса запросов: userId={}, eventId={}, status={}",
-                userId, eventId, updateDto.getStatus());
-
-        try {
-            String status = updateDto.getStatus();
-            if (!"CONFIRMED".equals(status) && !"REJECTED".equals(status)) {
-                throw new IllegalArgumentException("Статус должен быть CONFIRMED или REJECTED");
-            }
-
-            RequestStatusUpdateResultDto result = RequestStatusUpdateResultDto.builder()
-                    .confirmedRequests(Collections.emptyList())
-                    .rejectedRequests(Collections.emptyList())
-                    .build();
-            return ResponseEntity.ok(result);
-
-        } catch (Exception e) {
-            log.error("Ошибка: {}", e.getMessage());
-            throw e;
-        }
     }
 
     // Получение запросов пользователя
