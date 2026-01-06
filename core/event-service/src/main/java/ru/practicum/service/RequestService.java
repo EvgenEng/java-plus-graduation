@@ -9,7 +9,11 @@ import ru.practicum.dto.RequestDto;
 import ru.practicum.dto.RequestStatusUpdateDto;
 import ru.practicum.dto.RequestStatusUpdateResultDto;
 import ru.practicum.exception.ConflictException;
+import ru.practicum.exception.EntityNotFoundException;
 import ru.practicum.model.Event;
+import ru.practicum.model.ParticipationRequest;
+import ru.practicum.repository.EventRepository;
+import ru.practicum.repository.RequestRepository;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -19,6 +23,9 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 public class RequestService {
+
+    private final RequestRepository requestRepository;
+    private final EventRepository eventRepository;
 
     public List<RequestDto> getEventRequests(Long userId, Long eventId) {
         log.info("Получение запросов для события {} пользователя {}", eventId, userId);
@@ -56,35 +63,65 @@ public class RequestService {
         log.info("Создание запроса: userId={}, eventId={}", userId, eventId);
 
         try {
-            String status = "PENDING";
+            // 1. Получаем событие из БАЗЫ (не заглушка!)
+            Event event = eventRepository.findById(eventId)
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Событие с id=" + eventId + " не найдено"));
 
-            if (eventId == 8L || eventId == 18L) {
-                status = "CONFIRMED";
-            }
-
-            if (eventId == 82L) {
+            // 2. Проверка: инициатор события
+            if (event.getInitiatorId().equals(userId)) {
                 throw new ConflictException("Инициатор события не может подать заявку на участие в своём событии");
             }
-            if (eventId == 83L) {
+
+            // 3. Проверка: опубликовано ли событие
+            if (!"PUBLISHED".equals(event.getState())) {
                 throw new ConflictException("Нельзя подать заявку на неопубликованное событие");
             }
-            if (eventId == 84L) {
-                throw new ConflictException("Достигнут лимит участников для события");
+
+            // 4. Проверка: дублирующая заявка
+            if (requestRepository.existsByRequesterIdAndEventId(userId, eventId)) {
+                throw new ConflictException("Нельзя отправить дублирующую заявку на участие в событии");
             }
 
-            return RequestDto.builder()
-                    .id(1L)
-                    .requester(userId)
-                    .event(eventId)
+            // 5. Проверка: лимит участников
+            if (event.getParticipantLimit() != null && event.getParticipantLimit() > 0) {
+                Integer confirmedCount = requestRepository.countByEventIdAndStatus(eventId, "CONFIRMED");
+                if (confirmedCount != null && confirmedCount >= event.getParticipantLimit()) {
+                    throw new ConflictException("Достигнут лимит участников для события");
+                }
+            }
+
+            // 6. Определяем статус
+            String status = "PENDING";
+            if ((event.getParticipantLimit() != null && event.getParticipantLimit() == 0) ||
+                    (event.getRequestModeration() != null && !event.getRequestModeration())) {
+                status = "CONFIRMED"; // ★ Автоматическое подтверждение
+            }
+
+            // 7. Создаем и сохраняем заявку
+            ParticipationRequest request = ParticipationRequest.builder()
+                    .requesterId(userId)
+                    .eventId(eventId)
                     .status(status)
                     .created(LocalDateTime.now())
                     .build();
 
-        } catch (ConflictException e) {
-            throw e;
+            ParticipationRequest savedRequest = requestRepository.save(request);
+
+            // 8. Возвращаем DTO
+            return RequestDto.builder()
+                    .id(savedRequest.getId())
+                    .requester(savedRequest.getRequesterId())
+                    .event(savedRequest.getEventId())
+                    .status(savedRequest.getStatus())
+                    .created(savedRequest.getCreated())
+                    .build();
+
+        } catch (EntityNotFoundException | ConflictException e) {
+            throw e; // Пробрасываем для обработки в GlobalExceptionHandler
         } catch (Exception e) {
-            log.error("Ошибка: {}", e.getMessage());
-            throw new RuntimeException("Ошибка при создании запроса", e);
+            log.error("Ошибка создания запроса: {}", e.getMessage(), e);
+            throw new RuntimeException("Внутренняя ошибка сервера");
         }
     }
 

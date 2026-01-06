@@ -340,14 +340,14 @@ public class EventService {
                 }
             }
 
-            // 9. Возвращаем результат (даже пустой список)
+            // 9. Возвращаем реальные данные
             return events.stream()
                     .map(EventMapper::toEventDto)
                     .collect(Collectors.toList());
 
         } catch (IllegalArgumentException e) {
             log.warn("Некорректные параметры поиска: {}", e.getMessage());
-            return Collections.emptyList();
+            throw e;
 
         } catch (Exception e) {
             log.error("Ошибка поиска событий: {}", e.getMessage());
