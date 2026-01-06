@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 import ru.practicum.dto.RequestDto;
 import ru.practicum.dto.RequestStatusUpdateDto;
 import ru.practicum.dto.RequestStatusUpdateResultDto;
+import ru.practicum.exception.AccessDeniedException;
+import ru.practicum.exception.ConditionsNotMetException;
 import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.EntityNotFoundException;
 import ru.practicum.model.Event;
@@ -16,8 +18,10 @@ import ru.practicum.repository.EventRepository;
 import ru.practicum.repository.RequestRepository;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,44 +30,107 @@ public class RequestService {
 
     private final RequestRepository requestRepository;
     private final EventRepository eventRepository;
+    private final EventService eventService;
 
     public List<RequestDto> getEventRequests(Long userId, Long eventId) {
         log.info("Получение запросов для события {} пользователя {}", eventId, userId);
-        // Заглушка - возвращаем пустой список
-        return Collections.emptyList();
+
+        // Проверяем, что событие принадлежит пользователю
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new EntityNotFoundException("Событие не найдено"));
+
+        if (!event.getInitiatorId().equals(userId)) {
+            throw new AccessDeniedException("Только инициатор события может просматривать запросы");
+        }
+
+        List<ParticipationRequest> requests = requestRepository.findByEventId(eventId);
+
+        return requests.stream()
+                .map(this::toRequestDto)
+                .collect(Collectors.toList());
     }
 
     public RequestStatusUpdateResultDto updateRequestStatus(Long userId, Long eventId, RequestStatusUpdateDto updateDto) {
         log.info("Обновление статуса запросов: userId={}, eventId={}, requestIds={}, status={}",
                 userId, eventId, updateDto.getRequestIds(), updateDto.getStatus());
 
+        // 1. Получаем событие
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new EntityNotFoundException("Событие не найдено"));
+
+        // 2. Проверяем права
+        if (!event.getInitiatorId().equals(userId)) {
+            throw new AccessDeniedException("Только инициатор события может изменять статус запросов");
+        }
+
+        // 3. Получаем запросы
+        List<ParticipationRequest> requests = requestRepository.findAllByIdIn(updateDto.getRequestIds());
+
+        // 4. Проверяем, что все запросы принадлежат этому событию
+        requests.forEach(request -> {
+            if (!request.getEventId().equals(eventId)) {
+                throw new ConditionsNotMetException("Запрос не принадлежит указанному событию");
+            }
+        });
+
+        // 5. Обрабатываем подтверждение/отклонение
+        List<RequestDto> confirmed = new ArrayList<>();
+        List<RequestDto> rejected = new ArrayList<>();
+
+        if ("CONFIRMED".equals(updateDto.getStatus())) {
+            // Проверяем лимит участников
+            Long currentConfirmed = Long.valueOf(requestRepository.countByEventIdAndStatus(eventId, "CONFIRMED"));
+            Long limit = event.getParticipantLimit();
+
+            if (limit > 0 && currentConfirmed + requests.size() > limit) {
+                throw new ConditionsNotMetException("Превышен лимит участников");
+            }
+
+            // Подтверждаем запросы
+            for (ParticipationRequest request : requests) {
+                if ("PENDING".equals(request.getStatus())) {
+                    request.setStatus("CONFIRMED");
+                    requestRepository.save(request);
+                    confirmed.add(toRequestDto(request));
+
+                    // Обновляем счетчик подтвержденных запросов в событии
+                    event.setConfirmedRequests(event.getConfirmedRequests() + 1);
+                }
+            }
+        } else if ("REJECTED".equals(updateDto.getStatus())) {
+            // Отклоняем запросы
+            for (ParticipationRequest request : requests) {
+                if ("PENDING".equals(request.getStatus())) {
+                    request.setStatus("REJECTED");
+                    requestRepository.save(request);
+                    rejected.add(toRequestDto(request));
+                }
+            }
+        }
+
+        eventRepository.save(event);
+
         return RequestStatusUpdateResultDto.builder()
-                .confirmedRequests(Collections.emptyList())
-                .rejectedRequests(Collections.emptyList())
+                .confirmedRequests(confirmed)
+                .rejectedRequests(rejected)
                 .build();
     }
 
     public List<RequestDto> getUserRequests(Long userId) {
         log.info("Получение запросов пользователя {}", userId);
-        return Collections.emptyList();
+
+        List<ParticipationRequest> requests = requestRepository.findByRequesterId(userId);
+
+        return requests.stream()
+                .map(this::toRequestDto)
+                .collect(Collectors.toList());
     }
 
-    /*public RequestDto createRequest(Long userId, Long eventId) {
-        log.info("Создание запроса: userId={}, eventId={}", userId, eventId);
-
-        return RequestDto.builder()
-                .id(1L)
-                .requester(userId)
-                .event(eventId)
-                .status("PENDING")
-                .created(LocalDateTime.now())
-                .build();
-    }*/
     public RequestDto createRequest(Long userId, Long eventId) {
         log.info("Создание запроса: userId={}, eventId={}", userId, eventId);
 
         try {
-            // 1. Получаем событие из БАЗЫ (не заглушка!)
+            // 1. Получаем событие
             Event event = eventRepository.findById(eventId)
                     .orElseThrow(() -> new EntityNotFoundException(
                             "Событие с id=" + eventId + " не найдено"));
@@ -91,11 +158,12 @@ public class RequestService {
                 }
             }
 
-            // 6. Определяем статус
+            // ★★★★ ВАЖНОЕ ИСПРАВЛЕНИЕ: Автоматическое подтверждение при participantLimit == 0
             String status = "PENDING";
-            if ((event.getParticipantLimit() != null && event.getParticipantLimit() == 0) ||
-                    (event.getRequestModeration() != null && !event.getRequestModeration())) {
-                status = "CONFIRMED"; // ★ Автоматическое подтверждение
+            if (event.getParticipantLimit() != null && event.getParticipantLimit() == 0) {
+                status = "CONFIRMED";
+            } else if (event.getRequestModeration() != null && !event.getRequestModeration()) {
+                status = "CONFIRMED";
             }
 
             // 7. Создаем и сохраняем заявку
@@ -108,17 +176,16 @@ public class RequestService {
 
             ParticipationRequest savedRequest = requestRepository.save(request);
 
-            // 8. Возвращаем DTO
-            return RequestDto.builder()
-                    .id(savedRequest.getId())
-                    .requester(savedRequest.getRequesterId())
-                    .event(savedRequest.getEventId())
-                    .status(savedRequest.getStatus())
-                    .created(savedRequest.getCreated())
-                    .build();
+            // Обновляем счетчик подтвержденных запросов, если статус CONFIRMED
+            if ("CONFIRMED".equals(status)) {
+                event.setConfirmedRequests(event.getConfirmedRequests() + 1);
+                eventRepository.save(event);
+            }
+
+            return toRequestDto(savedRequest);
 
         } catch (EntityNotFoundException | ConflictException e) {
-            throw e; // Пробрасываем для обработки в GlobalExceptionHandler
+            throw e;
         } catch (Exception e) {
             log.error("Ошибка создания запроса: {}", e.getMessage(), e);
             throw new RuntimeException("Внутренняя ошибка сервера");
@@ -128,11 +195,30 @@ public class RequestService {
     public RequestDto cancelRequest(Long userId, Long requestId) {
         log.info("Отмена запроса: userId={}, requestId={}", userId, requestId);
 
+        ParticipationRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new EntityNotFoundException("Запрос не найден"));
+
+        if (!request.getRequesterId().equals(userId)) {
+            throw new AccessDeniedException("Только автор запроса может его отменить");
+        }
+
+        if (!"PENDING".equals(request.getStatus())) {
+            throw new ConditionsNotMetException("Можно отменить только запросы в статусе PENDING");
+        }
+
+        request.setStatus("CANCELED");
+        ParticipationRequest updatedRequest = requestRepository.save(request);
+
+        return toRequestDto(updatedRequest);
+    }
+
+    private RequestDto toRequestDto(ParticipationRequest request) {
         return RequestDto.builder()
-                .id(requestId)
-                .requester(userId)
-                .status("CANCELED")
-                .created(LocalDateTime.now())
+                .id(request.getId())
+                .requester(request.getRequesterId())
+                .event(request.getEventId())
+                .status(request.getStatus())
+                .created(request.getCreated())
                 .build();
     }
 }

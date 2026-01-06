@@ -42,8 +42,12 @@ public class EventService {
                 search.getUsers(), search.getStates(), search.getCategories());
 
         try {
-            if (search.getSize() <= 0) {
+            // Устанавливаем значения по умолчанию
+            if (search.getSize() == null || search.getSize() <= 0) {
                 search.setSize(10);
+            }
+            if (search.getFrom() == null || search.getFrom() < 0) {
+                search.setFrom(0);
             }
 
             List<Event> events = eventRepository.findAdminEventsByFilters(search);
@@ -280,18 +284,23 @@ public class EventService {
                 search.setSort("EVENT_DATE");
             }
 
-            // 2. Проверка диапазона дат
-            if (search.getRangeStart() != null && search.getRangeEnd() != null) {
-                if (search.getRangeStart().isAfter(search.getRangeEnd())) {
+            // 2. Устанавливаем rangeStart если не указан
+            LocalDateTime rangeStart = search.getRangeStart();
+            LocalDateTime rangeEnd = search.getRangeEnd();
+
+            // Если rangeStart не указан, устанавливаем текущее время
+            if (rangeStart == null) {
+                rangeStart = LocalDateTime.now();
+            }
+
+            // 3. Проверка диапазона дат
+            if (rangeStart != null && rangeEnd != null) {
+                if (rangeStart.isAfter(rangeEnd)) {
                     throw new IllegalArgumentException(
                             "Начальная дата не может быть позже конечной"
                     );
                 }
             }
-
-            // 3. Устанавливаем rangeStart если не указан
-            LocalDateTime rangeStart = search.getRangeStart();
-            LocalDateTime rangeEnd = search.getRangeEnd();
 
             // 4. Подготовка параметров
             String text = (search.getText() != null && !search.getText().trim().isEmpty())
@@ -348,9 +357,8 @@ public class EventService {
         } catch (IllegalArgumentException e) {
             log.warn("Некорректные параметры поиска: {}", e.getMessage());
             throw e;
-
         } catch (Exception e) {
-            log.error("Ошибка поиска событий: {}", e.getMessage());
+            log.error("Ошибка поиска событий: {}", e.getMessage(), e);
             return Collections.emptyList();
         }
     }

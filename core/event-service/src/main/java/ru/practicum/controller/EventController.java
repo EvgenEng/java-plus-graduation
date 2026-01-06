@@ -42,12 +42,16 @@ public class EventController {
             @RequestParam(required = false, defaultValue = "0") Integer from,
             @RequestParam(required = false, defaultValue = "10") Integer size) {
 
-        if (size == null || size <= 0) {
+        /*if (size == null || size <= 0) {
             size = 10;
         }
         if (from == null || from < 0) {
             from = 0;
-        }
+        }*/
+        if (size == null) size = 10;
+        if (from == null) from = 0;
+        if (size <= 0) size = 10;
+        if (from < 0) from = 0;
 
         AdminEventSearch search = AdminEventSearch.builder()
                 .users(users)
