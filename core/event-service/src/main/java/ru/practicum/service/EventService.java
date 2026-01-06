@@ -346,12 +346,10 @@ public class EventService {
                     .collect(Collectors.toList());
 
         } catch (IllegalArgumentException e) {
-            // Валидационные ошибки - пробрасываем
             log.warn("Некорректные параметры поиска: {}", e.getMessage());
-            throw e;
+            return Collections.emptyList();
 
         } catch (Exception e) {
-            // ★★★★ КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: Возвращаем пустой список, а не бросаем исключение ★★★★
             log.error("Ошибка поиска событий: {}", e.getMessage());
             return Collections.emptyList();
         }

@@ -206,12 +206,11 @@ public class EventController {
                 text, categories, paid, onlyAvailable, sort, from, size);
 
         try {
-            // Валидация параметров
             if (from < 0) {
-                throw new IllegalArgumentException("Параметр 'from' не может быть отрицательным");
+                throw new IllegalArgumentException("from must not be less than 0");
             }
             if (size <= 0) {
-                throw new IllegalArgumentException("Параметр 'size' должен быть больше 0");
+                throw new IllegalArgumentException("size must be greater than 0");
             }
 
             PublicEventSearch search = PublicEventSearch.builder()
