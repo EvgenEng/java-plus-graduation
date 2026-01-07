@@ -158,8 +158,14 @@ public class RequestService {
                 }
             }
 
-            String status = "PENDING";
+            /*String status = "PENDING";
             if (event.getParticipantLimit() != null && event.getParticipantLimit() == 0) {
+                status = "CONFIRMED";
+            } else if (event.getRequestModeration() != null && !event.getRequestModeration()) {
+                status = "CONFIRMED";
+            }*/
+            String status = "PENDING";
+            if (event.getParticipantLimit() != null && event.getParticipantLimit().longValue() == 0L) {
                 status = "CONFIRMED";
             } else if (event.getRequestModeration() != null && !event.getRequestModeration()) {
                 status = "CONFIRMED";
