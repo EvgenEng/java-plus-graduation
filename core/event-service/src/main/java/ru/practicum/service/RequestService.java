@@ -126,71 +126,6 @@ public class RequestService {
                 .collect(Collectors.toList());
     }
 
-    /*public RequestDto createRequest(Long userId, Long eventId) {
-        log.info("Создание запроса: userId={}, eventId={}", userId, eventId);
-
-        try {
-            // 1. Получаем событие
-            Event event = eventRepository.findById(eventId)
-                    .orElseThrow(() -> new EntityNotFoundException(
-                            "Событие с id=" + eventId + " не найдено"));
-
-            // 2. Проверка: инициатор события
-            if (event.getInitiatorId().equals(userId)) {
-                throw new ConflictException("Инициатор события не может подать заявку на участие в своём событии");
-            }
-
-            // 3. Проверка: опубликовано ли событие
-            if (!"PUBLISHED".equals(event.getState())) {
-                throw new ConflictException("Нельзя подать заявку на неопубликованное событие");
-            }
-
-            // 4. Проверка: дублирующая заявка
-            if (requestRepository.existsByRequesterIdAndEventId(userId, eventId)) {
-                throw new ConflictException("Нельзя отправить дублирующую заявку на участие в событии");
-            }
-
-            // 5. Проверка: лимит участников
-            if (event.getParticipantLimit() != null && event.getParticipantLimit() > 0) {
-                Integer confirmedCount = requestRepository.countByEventIdAndStatus(eventId, "CONFIRMED");
-                if (confirmedCount != null && confirmedCount >= event.getParticipantLimit()) {
-                    throw new ConflictException("Достигнут лимит участников для события");
-                }
-            }
-
-            // ★★★★ ВАЖНОЕ ИСПРАВЛЕНИЕ: Автоматическое подтверждение при participantLimit == 0
-            String status = "PENDING";
-            if (event.getParticipantLimit() != null && event.getParticipantLimit() == 0) {
-                status = "CONFIRMED";
-            } else if (event.getRequestModeration() != null && !event.getRequestModeration()) {
-                status = "CONFIRMED";
-            }
-
-            // 7. Создаем и сохраняем заявку
-            ParticipationRequest request = ParticipationRequest.builder()
-                    .requesterId(userId)
-                    .eventId(eventId)
-                    .status(status)
-                    .created(LocalDateTime.now())
-                    .build();
-
-            ParticipationRequest savedRequest = requestRepository.save(request);
-
-            // Обновляем счетчик подтвержденных запросов, если статус CONFIRMED
-            if ("CONFIRMED".equals(status)) {
-                event.setConfirmedRequests(event.getConfirmedRequests() + 1);
-                eventRepository.save(event);
-            }
-
-            return toRequestDto(savedRequest);
-
-        } catch (EntityNotFoundException | ConflictException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Ошибка создания запроса: {}", e.getMessage(), e);
-            throw new RuntimeException("Внутренняя ошибка сервера");
-        }
-    }*/
     public RequestDto createRequest(Long userId, Long eventId) {
         log.info("Создание запроса: userId={}, eventId={}", userId, eventId);
 
@@ -224,14 +159,9 @@ public class RequestService {
             }
 
             String status = "PENDING";
-
-            if (eventId == 8L) {
+            if (event.getParticipantLimit() != null && event.getParticipantLimit() == 0) {
                 status = "CONFIRMED";
-            }
-            else if (event.getParticipantLimit() != null && event.getParticipantLimit() == 0) {
-                status = "CONFIRMED";
-            }
-            else if (event.getRequestModeration() != null && !event.getRequestModeration()) {
+            } else if (event.getRequestModeration() != null && !event.getRequestModeration()) {
                 status = "CONFIRMED";
             }
 
@@ -247,8 +177,7 @@ public class RequestService {
 
             // Обновляем счетчик подтвержденных запросов, если статус CONFIRMED
             if ("CONFIRMED".equals(status)) {
-                int currentConfirmed = Math.toIntExact(event.getConfirmedRequests() != null ? event.getConfirmedRequests() : 0);
-                event.setConfirmedRequests((long) (currentConfirmed + 1));
+                event.setConfirmedRequests(event.getConfirmedRequests() + 1);
                 eventRepository.save(event);
             }
 

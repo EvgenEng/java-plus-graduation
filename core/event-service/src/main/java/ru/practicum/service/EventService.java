@@ -271,7 +271,7 @@ public class EventService {
         }
     }
     */
-    /*@Transactional(readOnly = true)
+    @Transactional(readOnly = true)
     public List<EventDto> searchCommon(PublicEventSearch search) {
         log.info("Публичный поиск событий: text={}, categories={}, onlyAvailable={}",
                 search.getText(), search.getCategories(), search.getOnlyAvailable());
@@ -361,12 +361,6 @@ public class EventService {
             log.error("Ошибка поиска событий: {}", e.getMessage(), e);
             return Collections.emptyList();
         }
-    }*/
-    @Transactional(readOnly = true)
-    public List<EventDto> searchCommon(PublicEventSearch search) {
-        log.info("Публичный поиск событий");
-
-        return Collections.emptyList();
     }
 
     @Transactional
