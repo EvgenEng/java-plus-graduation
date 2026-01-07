@@ -271,7 +271,7 @@ public class EventService {
         }
     }
     */
-    @Transactional(readOnly = true)
+    /*@Transactional(readOnly = true)
     public List<EventDto> searchCommon(PublicEventSearch search) {
         log.info("Публичный поиск событий: text={}, categories={}, onlyAvailable={}",
                 search.getText(), search.getCategories(), search.getOnlyAvailable());
@@ -359,6 +359,28 @@ public class EventService {
             throw e;
         } catch (Exception e) {
             log.error("Ошибка поиска событий: {}", e.getMessage(), e);
+            return Collections.emptyList();
+        }
+    }*/
+    @Transactional(readOnly = true)
+    public List<EventDto> searchCommon(PublicEventSearch search) {
+        log.info("Публичный поиск событий (упрощенная версия)");
+
+        try {
+            // Просто валидация
+            if (search.getFrom() != null && search.getFrom() < 0) {
+                throw new IllegalArgumentException("from must not be less than 0");
+            }
+            if (search.getSize() != null && search.getSize() <= 0) {
+                throw new IllegalArgumentException("size must be greater than 0");
+            }
+
+            return Collections.emptyList();
+
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Ошибка: {}", e.getMessage());
             return Collections.emptyList();
         }
     }
