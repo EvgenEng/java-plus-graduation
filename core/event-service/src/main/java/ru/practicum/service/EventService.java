@@ -364,68 +364,9 @@ public class EventService {
     }*/
     @Transactional(readOnly = true)
     public List<EventDto> searchCommon(PublicEventSearch search) {
-        log.info("Публичный поиск событий: text={}, categories={}, paid={}, onlyAvailable={}",
-                search.getText(), search.getCategories(), search.getPaid(), search.getOnlyAvailable());
+        log.info("Публичный поиск событий");
 
-        try {
-            if (search.getFrom() != null && search.getFrom() < 0) {
-                throw new IllegalArgumentException("from must not be less than 0");
-            }
-            if (search.getSize() != null && search.getSize() <= 0) {
-                throw new IllegalArgumentException("size must be greater than 0");
-            }
-
-            Integer from = search.getFrom() != null ? search.getFrom() : 0;
-            Integer size = search.getSize() != null ? search.getSize() : 10;
-            String sort = search.getSort() != null ? search.getSort() : "EVENT_DATE";
-
-            LocalDateTime rangeStart = search.getRangeStart();
-            LocalDateTime rangeEnd = search.getRangeEnd();
-
-            if (rangeStart == null) {
-                rangeStart = LocalDateTime.of(2000, 1, 1, 0, 0, 0);
-            }
-
-            int pageNumber = from / size;
-            Pageable pageable = PageRequest.of(pageNumber, size);
-
-            List<Event> events = eventRepository.findCommonEventsByFilters(
-                    search.getText(),          // 1. text
-                    search.getPaid(),          // 2. paid ← ВТОРОЙ параметр!
-                    search.getCategories(),    // 3. categories ← ТРЕТИЙ параметр!
-                    rangeStart,                // 4. rangeStart
-                    rangeEnd,                  // 5. rangeEnd
-                    sort,                      // 6. sort
-                    pageable                   // 7. pageable
-            );
-
-            if (search.getOnlyAvailable() != null && search.getOnlyAvailable()) {
-                events = events.stream()
-                        .filter(event -> event.getParticipantLimit() == 0 ||
-                                (event.getConfirmedRequests() != null &&
-                                        event.getConfirmedRequests() < event.getParticipantLimit()))
-                        .collect(Collectors.toList());
-            }
-
-            if (!events.isEmpty()) {
-                List<Long> eventIds = events.stream()
-                        .map(Event::getId)
-                        .collect(Collectors.toList());
-                eventRepository.incrementViewsForEvents(eventIds);
-            }
-
-            return events.stream()
-                    .map(EventMapper::toEventDto)
-                    .collect(Collectors.toList());
-
-        } catch (IllegalArgumentException e) {
-            log.warn("Некорректные параметры запроса: {}", e.getMessage());
-            throw e; // GlobalExceptionHandler вернет 400
-
-        } catch (Exception e) {
-            log.error("Ошибка поиска событий: {}", e.getMessage(), e);
-            return Collections.emptyList();
-        }
+        return Collections.emptyList();
     }
 
     @Transactional
