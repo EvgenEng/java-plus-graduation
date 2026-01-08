@@ -59,7 +59,7 @@ public class CategoryService {
 
         categoryRepository.delete(category);
     }*/
-    /*@Transactional
+    @Transactional
     public void deleteCategory(Long catId) {
 
         // 1. Проверяем существование
@@ -69,25 +69,6 @@ public class CategoryService {
 
         // 2. Удаление
         categoryRepository.delete(category);
-    }*/
-    @Transactional
-    public void deleteCategory(Long catId) {
-        log.info("Удаление категории: id={}", catId);
-
-        // 1. Проверяем существование категории
-        Category category = categoryRepository.findById(catId)
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "Категория с id=" + catId + " не найдена"));
-
-        // 2. ПРОВЕРКА НА СВЯЗАННЫЕ СОБЫТИЯ - САМОЕ ВАЖНОЕ ДЛЯ ТЕСТОВ!
-        boolean hasEvents = categoryRepository.existsByCategoryId(catId);
-        if (hasEvents) {
-            throw new ConflictException("Категория содержит события и не может быть удалена");
-        }
-
-        // 3. Удаление
-        categoryRepository.delete(category);
-        log.info("Категория id={} успешно удалена", catId);
     }
 
     @Transactional
