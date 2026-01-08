@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 public class EventService {
     private final EventRepository eventRepository;
 
-    @Transactional(readOnly = true)
+    /*@Transactional(readOnly = true)
     public List<EventDto> searchAdmin(AdminEventSearch search) {
         log.info("Админский поиск: users={}, states={}, categories={}",
                 search.getUsers(), search.getStates(), search.getCategories());
@@ -57,6 +57,26 @@ public class EventService {
                     .collect(Collectors.toList());
         } catch (Exception e) {
             log.error("Ошибка в админском поиске: ", e);
+            return Collections.emptyList();
+        }
+    }*/
+    @Transactional(readOnly = true)
+    public List<EventDto> searchAdmin(AdminEventSearch search) {
+        try {
+            // Устанавливаем значения по умолчанию
+            if (search.getSize() == null || search.getSize() <= 0) {
+                search.setSize(10);
+            }
+            if (search.getFrom() == null || search.getFrom() < 0) {
+                search.setFrom(0);
+            }
+
+            List<Event> events = eventRepository.findAdminEventsByFilters(search);
+
+            return events.stream()
+                    .map(EventMapper::toEventDto)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
             return Collections.emptyList();
         }
     }

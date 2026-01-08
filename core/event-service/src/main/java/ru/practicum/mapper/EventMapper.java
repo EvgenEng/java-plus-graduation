@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class EventMapper {
 
-    public static EventDto toEventDto(Event event) {
+    /*    public static EventDto toEventDto(Event event) {
         return EventDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())
@@ -31,6 +31,33 @@ public class EventMapper {
                 .state(event.getState())
                 .title(event.getTitle())
                 .views(event.getViews())
+                .build();
+    }*/
+    public static EventDto toEventDto(Event event) {
+        if (event == null) {
+            return null;
+        }
+
+        return EventDto.builder()
+                .id(event.getId())
+                .annotation(event.getAnnotation())
+                .category(event.getCategoryId())
+                .createdOn(event.getCreatedOn())
+                .description(event.getDescription())
+                .eventDate(event.getEventDate())
+                .initiator(event.getInitiatorId())
+                .location(event.getLat() != null && event.getLon() != null
+                        ? new Location(event.getLat(), event.getLon())
+                        : null)
+                .paid(event.getPaid())
+                .participantLimit(event.getParticipantLimit())
+                .confirmedRequests(event.getConfirmedRequests() != null
+                        ? event.getConfirmedRequests() : 0L)
+                .publishedOn(event.getPublishedOn())
+                .requestModeration(event.getRequestModeration())
+                .state(event.getState())
+                .title(event.getTitle())
+                .views(event.getViews() != null ? event.getViews() : 0L)
                 .build();
     }
 

@@ -135,7 +135,11 @@ public interface EventRepository extends JpaRepository<Event, Long> {
         return findAllByInitiatorIdOrderByEventDateDesc(initiatorId, Pageable.unpaged());
     }
 
-    boolean existsByCategoryId(Long categoryId);
+    //boolean existsByCategoryId(Long categoryId);
+
+    @Query("SELECT CASE WHEN COUNT(e) > 0 THEN true ELSE false END " +
+            "FROM Event e WHERE e.categoryId = :categoryId")
+    boolean existsByCategoryId(@Param("categoryId") Long categoryId);
 
     List<Event> findAllByIdIn(List<Long> ids);
 
