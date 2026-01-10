@@ -1,45 +1,36 @@
 services:
-  ewm-db:
-    image: postgres:16.1
-    container_name: "ewm-main-db"
-    environment:
-      POSTGRES_DB: ewm_main_db
-      POSTGRES_USER: ewm_user
-      POSTGRES_PASSWORD: ewm_password
-    ports:
-      - "5432:5432"
-    volumes:
-      - ewm-data:/var/lib/postgresql/data
-      - ./core/user-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-user-schema.sql
-      - ./core/category-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/02-category-schema.sql
-      - ./core/event-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/03-event-schema.sql
-      - ./core/request-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/04-request-schema.sql
-      - ./core/compilation-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/05-compilation-schema.sql
-      - ./core/comment-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/06-comment-schema.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ewm_user -d ewm_main_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   stats-db:
     image: postgres:16.1
-    container_name: "stats-db"
+    container_name: ewm-stats-db-compose
+    ports:
+      - "6543:5432"
     environment:
-      POSTGRES_DB: ewm_stats_db
       POSTGRES_USER: stat_user
       POSTGRES_PASSWORD: stat_password
-    ports:
-      - "6542:5432"
+      POSTGRES_DB: ewm_stats_db
     volumes:
-      - stats-data:/var/lib/postgresql/data
-      - ./stats/stats-server/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-stats-schema.sql
+      - ./stats/stats-server/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U stat_user -d ewm_stats_db"]
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -p 5432" ]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
 
-volumes:
-  ewm-data:
-  stats-data:
+  ewm-db:
+    image: postgres:16.1
+    container_name: ewm-main-db-compose
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ewm_user
+      POSTGRES_PASSWORD: ewm_password
+      POSTGRES_DB: ewm_main_db
+    volumes:
+      - ./core/event-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -p 5432" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s

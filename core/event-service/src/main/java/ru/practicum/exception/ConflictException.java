@@ -1,18 +1,11 @@
-/*package ru.practicum.exception;
+package ru.practicum.exception;
 
 public class ConflictException extends RuntimeException {
     public ConflictException(String message) {
         super(message);
     }
-}*/
-package ru.practicum.exception;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseStatus;
-
-@ResponseStatus(HttpStatus.CONFLICT)
-public class ConflictException extends RuntimeException {
-    public ConflictException(String message) {
-        super(message);
+    public ConflictException(String entity, String reason) {
+        super(String.format("%s conflict: %s", entity, reason));
     }
 }

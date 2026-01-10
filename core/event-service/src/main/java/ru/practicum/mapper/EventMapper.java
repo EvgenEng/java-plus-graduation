@@ -1,121 +1,59 @@
 package ru.practicum.mapper;
 
-import lombok.AccessLevel;
-import lombok.NoArgsConstructor;
-import ru.practicum.dto.EventDto;
-import ru.practicum.dto.EventInfoDto;
-import ru.practicum.dto.Location;
-import ru.practicum.dto.NewEventDto;
+import org.mapstruct.*;
+import ru.practicum.dto.event.*;
+import ru.practicum.model.Category;
 import ru.practicum.model.Event;
+import ru.practicum.model.Location;
 
 import java.time.LocalDateTime;
 
-@NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class EventMapper {
+@Mapper(componentModel = "spring", uses = {CategoryMapper.class, LocationMapper.class})
+public interface EventMapper {
 
-    /*    public static EventDto toEventDto(Event event) {
-        return EventDto.builder()
-                .id(event.getId())
-                .annotation(event.getAnnotation())
-                .category(event.getCategoryId())
-                .createdOn(event.getCreatedOn())
-                .description(event.getDescription())
-                .eventDate(event.getEventDate())
-                .initiator(event.getInitiatorId())
-                .location(new Location(event.getLat(), event.getLon()))
-                .paid(event.getPaid())
-                .participantLimit(event.getParticipantLimit())
-                .confirmedRequests(event.getConfirmedRequests())
-                .publishedOn(event.getPublishedOn())
-                .requestModeration(event.getRequestModeration())
-                .state(event.getState())
-                .title(event.getTitle())
-                .views(event.getViews())
-                .build();
-    }*/
-    public static EventDto toEventDto(Event event) {
-        if (event == null) {
-            return null;
-        }
+    @Mapping(target = "initiator", ignore = true)
+    @Mapping(target = "confirmedRequests", ignore = true)
+    EventFullDto toFullDto(Event event);
 
-        return EventDto.builder()
-                .id(event.getId())
-                .annotation(event.getAnnotation())
-                .category(event.getCategoryId())
-                .createdOn(event.getCreatedOn())
-                .description(event.getDescription())
-                .eventDate(event.getEventDate())
-                .initiator(event.getInitiatorId())
-                .location(event.getLat() != null && event.getLon() != null
-                        ? new Location(event.getLat(), event.getLon())
-                        : null)
-                .paid(event.getPaid())
-                .participantLimit(event.getParticipantLimit())
-                .confirmedRequests(event.getConfirmedRequests() != null
-                        ? event.getConfirmedRequests() : 0L)
-                .publishedOn(event.getPublishedOn())
-                .requestModeration(event.getRequestModeration())
-                .state(event.getState())
-                .title(event.getTitle())
-                .views(event.getViews() != null ? event.getViews() : 0L)
-                .build();
-    }
+    @Mapping(target = "initiator", ignore = true)
+    @Mapping(target = "confirmedRequests", ignore = true)
+    EventShortDto toShortDto(Event event);
 
-    public static EventInfoDto toEventInfoDto(Event event) {
-        return EventInfoDto.builder()
-                .id(event.getId())
-                .title(event.getTitle())
-                .annotation(event.getAnnotation())
-                .description(event.getDescription())
-                .state(event.getState())
-                .categoryId(event.getCategoryId())
-                .initiatorId(event.getInitiatorId())
-                .participantLimit(event.getParticipantLimit())
-                .confirmedRequests(event.getConfirmedRequests())
-                .paid(event.getPaid())
-                .requestModeration(event.getRequestModeration())
-                .build();
-    }
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "confirmedRequests", constant = "0")
+    @Mapping(target = "state", expression = "java(ru.practicum.model.EventState.PENDING)")
+    @Mapping(target = "createdOn", expression = "java(mapNow())")
+    @Mapping(target = "publishedOn", ignore = true)
+    @Mapping(target = "views", constant = "0L")
+    @Mapping(target = "category", source = "category")
+    @Mapping(target = "initiatorId", source = "initiatorId")
+    Event toEvent(NewEventDto newEventDto, Long initiatorId, Category category, Location location);
 
-    public static Event toEvent(EventDto eventDto, Long initiatorId) {
-        return Event.builder()
-                .initiatorId(initiatorId)
-                .categoryId(eventDto.getCategory())
-                .title(eventDto.getTitle())
-                .paid(eventDto.getPaid() != null && eventDto.getPaid())
-                .requestModeration(eventDto.getRequestModeration() == null || eventDto.getRequestModeration())
-                .participantLimit(eventDto.getParticipantLimit() == null ? 0L : eventDto.getParticipantLimit())
-                .lon(eventDto.getLocation().getLon())
-                .lat(eventDto.getLocation().getLat())
-                .annotation(eventDto.getAnnotation())
-                .eventDate(eventDto.getEventDate())
-                .description(eventDto.getDescription())
-                .createdOn(LocalDateTime.now())
-                .state("PENDING")
-                .confirmedRequests(0L)
-                .views(0L)
-                .build();
-    }
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "category", ignore = true)
+    @Mapping(target = "location", ignore = true)
+    @Mapping(target = "state", ignore = true)
+    @Mapping(target = "publishedOn", ignore = true)
+    @Mapping(target = "createdOn", ignore = true)
+    @Mapping(target = "initiatorId", ignore = true)
+    @Mapping(target = "views", ignore = true)
+    @Mapping(target = "confirmedRequests", ignore = true)
+    void patchFromUser(UpdateEventUserRequestDto src, @MappingTarget Event event);
 
-    public static Event toEvent(NewEventDto newEventDto, Long initiatorId) {
-        return Event.builder()
-                .initiatorId(initiatorId)
-                .categoryId(newEventDto.getCategory())
-                .title(newEventDto.getTitle())
-                .paid(newEventDto.getPaid() != null ? newEventDto.getPaid() : false)
-                .requestModeration(newEventDto.getRequestModeration() != null ?
-                        newEventDto.getRequestModeration() : true)
-                .participantLimit(newEventDto.getParticipantLimit() != null ?
-                        newEventDto.getParticipantLimit() : 0L)
-                .lon(newEventDto.getLocation().getLon())
-                .lat(newEventDto.getLocation().getLat())
-                .annotation(newEventDto.getAnnotation())
-                .eventDate(newEventDto.getEventDate())
-                .description(newEventDto.getDescription())
-                .createdOn(LocalDateTime.now())
-                .state("PENDING")
-                .confirmedRequests(0L)
-                .views(0L)
-                .build();
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "category", ignore = true)
+    @Mapping(target = "location", ignore = true)
+    @Mapping(target = "state", ignore = true)
+    @Mapping(target = "publishedOn", ignore = true)
+    @Mapping(target = "createdOn", ignore = true)
+    @Mapping(target = "initiatorId", ignore = true)
+    @Mapping(target = "views", ignore = true)
+    @Mapping(target = "confirmedRequests", ignore = true)
+    void patchFromAdmin(UpdateEventAdminRequestDto src, @MappingTarget Event event);
+
+    default LocalDateTime mapNow() {
+        return LocalDateTime.now();
     }
 }
