@@ -6,38 +6,42 @@ spring:
     name: gateway-server
   main:
     web-application-type: reactive
-  
   cloud:
     config:
       enabled: false
-    
+
     gateway:
       discovery:
         locator:
           enabled: true
           lower-case-service-id: true
-      
+
       routes:
+        # 1. Public Events API - /events
         - id: event-service-public-api
           uri: lb://EVENT-SERVICE
           predicates:
             - Path=/events/**
 
+        # 2. Public Categories API - /categories
         - id: category-service-public-api
-          uri: lb://CATEGORY-SERVICE
+          uri: lb://EVENT-SERVICE
           predicates:
             - Path=/categories/**
 
+        # 3. Public Compilations API - /compilations
         - id: compilation-service-public-api
-          uri: lb://COMPILATION-SERVICE
+          uri: lb://EVENT-SERVICE
           predicates:
             - Path=/compilations/**
 
+        # 4. Public Statistics API - /stats
         - id: stats-server-public-api
           uri: lb://STATS-SERVER
           predicates:
             - Path=/stats/**
 
+        # 5. Private Events API - /users/{userId}/events
         - id: event-service-private-api
           uri: lb://EVENT-SERVICE
           predicates:
@@ -45,6 +49,7 @@ spring:
           filters:
             - StripPrefix=1
 
+        # 6. Private Requests API - /users/{userId}/requests
         - id: request-service-private-api
           uri: lb://REQUEST-SERVICE
           predicates:
@@ -52,6 +57,7 @@ spring:
           filters:
             - StripPrefix=1
 
+        # 7. Private Comments API - /users/{userId}/comments
         - id: comment-service-private-api
           uri: lb://COMMENT-SERVICE
           predicates:
@@ -59,31 +65,37 @@ spring:
           filters:
             - StripPrefix=1
 
+        # 8. Admin Events API - /admin/events
         - id: event-service-admin-api
           uri: lb://EVENT-SERVICE
           predicates:
             - Path=/admin/events/**
 
+        # 9. Admin Users API - /admin/users
         - id: user-service-admin-api
           uri: lb://USER-SERVICE
           predicates:
             - Path=/admin/users/**
 
+        # 10. Admin Categories API - /admin/categories
         - id: category-service-admin-api
-          uri: lb://CATEGORY-SERVICE
+          uri: lb://EVENT-SERVICE
           predicates:
             - Path=/admin/categories/**
 
+        # 11. Admin Compilations API - /admin/compilations
         - id: compilation-service-admin-api
-          uri: lb://COMPILATION-SERVICE
+          uri: lb://EVENT-SERVICE
           predicates:
             - Path=/admin/compilations/**
 
+        # 12. Public Users API - /users
         - id: user-service-public-api
           uri: lb://USER-SERVICE
           predicates:
             - Path=/users/**
 
+        # 13. Direct user API - /users/{userId}
         - id: user-service-direct-api
           uri: lb://USER-SERVICE
           predicates:
