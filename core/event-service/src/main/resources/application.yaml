@@ -7,10 +7,11 @@ spring:
   main:
     allow-bean-definition-overriding: true
   
-  # Config Server
-  cloud:
-    config:
-      enabled: false
+  #
+  mvc:
+    throw-exception-if-no-handler-found: true
+    pathmatch:
+      matching-strategy: ant_path_matcher
   
   # PostgreSQL Configuration
   datasource:
@@ -27,13 +28,17 @@ spring:
   # JPA Configuration
   jpa:
     hibernate:
-      ddl-auto: validate  # или none
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
         default_schema: public
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
     
     generate-ddl: false
   
@@ -44,6 +49,11 @@ spring:
       schema-locations: classpath:schema.sql
       continue-on-error: false
     initialization-mode: always
+
+  #
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: false
 
 # Eureka
 eureka:
@@ -61,13 +71,20 @@ management:
     web:
       exposure:
         include: health,info,metrics
+      path-mapping:
+        health: healthcheck
   endpoint:
     health:
       show-details: always
+      probes:
+        enabled: true
 
 # Logging
 logging:
   level:
     ru.practicum: DEBUG
-    org.springframework.jdbc: DEBUG
-    org.springframework.orm.jpa: DEBUG
+    org.springframework.validation: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
