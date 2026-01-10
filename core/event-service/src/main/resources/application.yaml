@@ -7,24 +7,33 @@ spring:
   main:
     allow-bean-definition-overriding: true
   
+  # Config Server
+  config:
+    import: optional:configserver
+  cloud:
+    config:
+      enabled: false
+    import-check:
+      enabled: false
+
   #
   mvc:
     throw-exception-if-no-handler-found: true
     pathmatch:
       matching-strategy: ant_path_matcher
-  
+
   # PostgreSQL Configuration
   datasource:
     driver-class-name: org.postgresql.Driver
     url: jdbc:postgresql://localhost:5432/event_service_db
     username: postgres
     password: postgres
-    
+
     hikari:
       connection-timeout: 30000
       maximum-pool-size: 10
       minimum-idle: 5
-  
+
   # JPA Configuration
   jpa:
     hibernate:
@@ -39,9 +48,9 @@ spring:
           batch_size: 20
         order_inserts: true
         order_updates: true
-    
+
     generate-ddl: false
-  
+
   # SQL init
   sql:
     init:
@@ -50,7 +59,7 @@ spring:
       continue-on-error: false
     initialization-mode: always
 
-  #
+  # Jackson
   jackson:
     deserialization:
       fail-on-unknown-properties: false
