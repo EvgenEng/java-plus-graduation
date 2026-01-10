@@ -352,7 +352,7 @@ public class RequestService {
                 .collect(Collectors.toList());
     }
 
-    public RequestDto createRequest(Long userId, Long eventId) {
+    /*public RequestDto createRequest(Long userId, Long eventId) {
         log.info("Создание запроса: userId={}, eventId={}", userId, eventId);
 
         try {
@@ -377,23 +377,44 @@ public class RequestService {
             }
 
             // 5. Проверка: лимит участников
-            Integer confirmedCount = requestRepository.countByEventIdAndStatus(eventId, "CONFIRMED");
-            Long participantLimit = event.getParticipantLimit();
-
-            if (participantLimit != null && participantLimit > 0) {
-                if (confirmedCount != null && confirmedCount >= participantLimit) {
+            if (event.getParticipantLimit() != null && event.getParticipantLimit() > 0) {
+                Integer confirmedCount = requestRepository.countByEventIdAndStatus(eventId, "CONFIRMED");
+                if (confirmedCount != null && confirmedCount >= event.getParticipantLimit()) {
                     throw new ConflictException("Достигнут лимит участников для события");
                 }
             }
 
             String status = "PENDING";
+            Long participantLimit = event.getParticipantLimit();
+            Boolean requestModeration = event.getRequestModeration();
 
-            if (participantLimit != null && participantLimit == 0) {
+            // Детальное логирование для отладки
+            log.info("Отладка createRequest: participantLimit={}, requestModeration={}",
+                    participantLimit, requestModeration);
+
+            // Проверяем ВСЕМИ способами
+            boolean isLimitZero = false;
+            if (participantLimit != null) {
+                // Все возможные проверки на 0
+                if (participantLimit.equals(0L) ||
+                        participantLimit.longValue() == 0L ||
+                        participantLimit.intValue() == 0) {
+                    isLimitZero = true;
+                    log.info("participantLimit равен 0, подтверждаем автоматически");
+                }
+            }
+
+            boolean isModerationOff = Boolean.FALSE.equals(requestModeration);
+
+            if (isLimitZero) {
                 status = "CONFIRMED";
-                log.info("Автоматическое подтверждение: participantLimit == 0 для события {}", eventId);
-            } else if (event.getRequestModeration() != null && !event.getRequestModeration()) {
+                log.info("Автоподтверждение: participantLimit равен 0");
+            } else if (isModerationOff) {
                 status = "CONFIRMED";
-                log.info("Автоматическое подтверждение: requestModeration == false для события {}", eventId);
+                log.info("Автоподтверждение: requestModeration отключен");
+            } else {
+                log.info("Стандартный статус PENDING: limit={}, moderation={}",
+                        participantLimit, requestModeration);
             }
 
             // 6. Создаем и сохраняем заявку
@@ -408,18 +429,123 @@ public class RequestService {
 
             // Обновляем счетчик подтвержденных запросов, если статус CONFIRMED
             if ("CONFIRMED".equals(status)) {
-                if (confirmedCount == null) confirmedCount = 0;
-                event.setConfirmedRequests(Long.valueOf(confirmedCount + 1));
+                event.setConfirmedRequests(event.getConfirmedRequests() + 1);
                 eventRepository.save(event);
-                log.info("Увеличен счетчик confirmedRequests для события {}: {}", eventId, event.getConfirmedRequests());
+                log.info("Счетчик подтвержденных запросов увеличен для события {}", eventId);
             }
 
+            log.info("Создан запрос ID={} со статусом {}", savedRequest.getId(), status);
             return toRequestDto(savedRequest);
 
         } catch (EntityNotFoundException | ConflictException e) {
             throw e;
         } catch (Exception e) {
             log.error("Ошибка создания запроса: {}", e.getMessage(), e);
+            throw new RuntimeException("Внутренняя ошибка сервера");
+        }
+    }*/
+    public RequestDto createRequest(Long userId, Long eventId) {
+        log.info("=== СОЗДАНИЕ ЗАПРОСА (ЖЕСТКОЕ РЕШЕНИЕ) ===");
+        log.info("userId: {}, eventId: {}", userId, eventId);
+
+        try {
+            // 1. Получаем событие
+            Event event = eventRepository.findById(eventId)
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Событие с id=" + eventId + " не найдено"));
+
+            log.info("Данные события из БД:");
+            log.info("  participantLimit: {}", event.getParticipantLimit());
+            log.info("  requestModeration: {}", event.getRequestModeration());
+            log.info("  state: {}", event.getState());
+            log.info("  initiatorId: {}", event.getInitiatorId());
+
+            // 2. Проверка: инициатор события
+            if (event.getInitiatorId().equals(userId)) {
+                log.warn("Инициатор события пытается подать заявку на свое событие");
+                throw new ConflictException("Инициатор события не может подать заявку на участие в своём событии");
+            }
+
+            // 3. Проверка: опубликовано ли событие
+            if (!"PUBLISHED".equals(event.getState())) {
+                log.warn("Событие не опубликовано (state={})", event.getState());
+                throw new ConflictException("Нельзя подать заявку на неопубликованное событие");
+            }
+
+            // 4. Проверка: дублирующая заявка
+            if (requestRepository.existsByRequesterIdAndEventId(userId, eventId)) {
+                log.warn("Дублирующая заявка");
+                throw new ConflictException("Нельзя отправить дублирующую заявку на участие в событии");
+            }
+
+            // 5. Подсчет подтвержденных запросов
+            Integer confirmedCount = requestRepository.countByEventIdAndStatus(eventId, "CONFIRMED");
+            Long participantLimit = event.getParticipantLimit();
+            Boolean requestModeration = event.getRequestModeration();
+
+            log.info("confirmedCount: {}", confirmedCount);
+            log.info("participantLimit из БД: {}", participantLimit);
+            log.info("requestModeration из БД: {}", requestModeration);
+
+
+            String status;
+
+            if (participantLimit == null || participantLimit == 0) {
+                status = "CONFIRMED";
+                log.warn("★ ВРЕМЕННОЕ РЕШЕНИЕ ★ Автоподтверждение для participantLimit={} (null или 0)",
+                        participantLimit);
+            } else if (requestModeration != null && !requestModeration) {
+                status = "CONFIRMED";
+                log.info("Автоподтверждение: requestModeration=false");
+            } else {
+                status = "PENDING";
+                log.info("Требуется модерация");
+
+                // Проверка лимита участников (только для PENDING запросов с лимитом > 0)
+                if (participantLimit > 0 && confirmedCount != null && confirmedCount >= participantLimit) {
+                    log.warn("Достигнут лимит участников: {}/{}", confirmedCount, participantLimit);
+                    throw new ConflictException("Достигнут лимит участников для события");
+                }
+            }
+
+            // 6. Создаем и сохраняем заявку
+            ParticipationRequest request = ParticipationRequest.builder()
+                    .requesterId(userId)
+                    .eventId(eventId)
+                    .status(status)
+                    .created(LocalDateTime.now())
+                    .build();
+
+            ParticipationRequest savedRequest = requestRepository.save(request);
+            log.info("Запрос сохранен: id={}, status={}", savedRequest.getId(), savedRequest.getStatus());
+
+            // 7. Обновляем счетчик подтвержденных запросов
+            if ("CONFIRMED".equals(status)) {
+                Long currentConfirmed = event.getConfirmedRequests() != null ?
+                        event.getConfirmedRequests() : 0L;
+                event.setConfirmedRequests(currentConfirmed + 1);
+                eventRepository.save(event);
+                log.info("Счетчик подтвержденных запросов увеличен: {} -> {}",
+                        currentConfirmed, event.getConfirmedRequests());
+            }
+
+            // 8. Логируем результат
+            RequestDto result = toRequestDto(savedRequest);
+            log.info("=== РЕЗУЛЬТАТ СОЗДАНИЯ ЗАПРОСА ===");
+            log.info("ID запроса: {}", result.getId());
+            log.info("Статус запроса: {}", result.getStatus());
+            log.info("ID события: {}", result.getEvent());
+            log.info("ID пользователя: {}", result.getRequester());
+            log.info("Дата создания: {}", result.getCreated());
+            log.info("==================================");
+
+            return result;
+
+        } catch (EntityNotFoundException | ConflictException e) {
+            log.error("Ошибка валидации при создании запроса: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("Непредвиденная ошибка при создании запроса: ", e);
             throw new RuntimeException("Внутренняя ошибка сервера");
         }
     }
