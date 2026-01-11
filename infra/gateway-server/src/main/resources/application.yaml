@@ -9,13 +9,11 @@ spring:
   cloud:
     config:
       enabled: false
-
     gateway:
       discovery:
         locator:
           enabled: true
           lower-case-service-id: true
-
       routes:
         # 1. Public Events API - /events
         - id: event-service-public-api
@@ -46,14 +44,14 @@ spring:
           uri: lb://EVENT-SERVICE
           predicates:
             - Path=/users/*/events/**
-          filters:
-            - StripPrefix=1
+          # ????? StripPrefix=1
 
         # 6. Private Requests API - /users/{userId}/requests
         - id: request-service-private-api
           uri: lb://REQUEST-SERVICE
           predicates:
             - Path=/users/*/requests/**
+          # ???????? StripPrefix=1, ?.?. request-service ??????? ???? ??? /users
           filters:
             - StripPrefix=1
 
@@ -62,6 +60,7 @@ spring:
           uri: lb://COMMENT-SERVICE
           predicates:
             - Path=/users/*/comments/**
+          # ???????? StripPrefix=1, ?.?. comment-service ??????? ???? ??? /users
           filters:
             - StripPrefix=1
 
@@ -100,6 +99,7 @@ spring:
           uri: lb://USER-SERVICE
           predicates:
             - Path=/users/{userId}
+        # ????? StripPrefix=1, ?.?. user-service ??????? ?????? ????
 
 eureka:
   client:
