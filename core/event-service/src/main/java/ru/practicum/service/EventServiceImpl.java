@@ -340,9 +340,15 @@ public class EventServiceImpl implements EventService {
                 .orElseThrow(() -> new NotFoundException("Category", "id", categoryId));
     }
 
-    private void checkTwoHoursForEvent(LocalDateTime time) {
+    /*private void checkTwoHoursForEvent(LocalDateTime time) {
         if (time.isBefore(LocalDateTime.now().plusHours(2))) {
             throw new ConflictException("дата и время на которые намечено событие не может быть раньше," +
+                    " чем через два часа от текущего момента");
+        }
+    }*/
+    private void checkTwoHoursForEvent(LocalDateTime time) {
+        if (time.isBefore(LocalDateTime.now().plusHours(2))) {
+            throw new IllegalArgumentException("дата и время на которые намечено событие не может быть раньше," +
                     " чем через два часа от текущего момента");
         }
     }
