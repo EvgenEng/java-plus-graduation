@@ -116,7 +116,7 @@ public class RequestServiceImpl implements RequestService {
                 .collect(Collectors.toList());
     }
 
-    @Override
+    /*@Override
     @Transactional
     public EventRequestStatusUpdateResultDto changeRequestStatus(Long userId, Long eventId,
                                                                  EventRequestStatusUpdateRequestDto updateRequestDto) {
@@ -153,6 +153,67 @@ public class RequestServiceImpl implements RequestService {
                     rejectedRequests.add(requestMapper.toDto(req));
                 } else {
                     req.setStatus(RequestStatus.CONFIRMED);
+                    confirmedRequests.add(requestMapper.toDto(req));
+                }
+            } else if (updateRequestDto.getStatus() == RequestStatus.REJECTED) {
+                req.setStatus(RequestStatus.REJECTED);
+                rejectedRequests.add(requestMapper.toDto(req));
+            }
+        }
+
+        requestRepository.saveAll(requests);
+
+        return new EventRequestStatusUpdateResultDto(confirmedRequests, rejectedRequests);
+    }*/
+    @Override
+    @Transactional
+    public EventRequestStatusUpdateResultDto changeRequestStatus(Long userId, Long eventId,
+                                                                 EventRequestStatusUpdateRequestDto updateRequestDto) {
+        // 1. Получить событие
+        EventFullDto event = getEventOrThrow(eventId);
+
+        // 2. Проверить права
+        if (!event.getInitiator().getId().equals(userId)) {
+            throw new ConflictException("Только создатель может менять статус запроса");
+        }
+
+        // 3. Получить текущее количество подтверждённых запросов ОДИН РАЗ
+        long confirmedCount = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
+
+        // 4. Проверить лимит только если пытаемся подтвердить новые запросы
+        boolean tryingToConfirm = updateRequestDto.getStatus() == RequestStatus.CONFIRMED;
+
+        if (tryingToConfirm && event.getParticipantLimit() != 0 && confirmedCount >= event.getParticipantLimit()) {
+            throw new ConflictException("Достигнут лимит участников");
+        }
+
+        // 5. Обработать запросы
+        List<Request> requests = requestRepository.findAllById(updateRequestDto.getRequestIds());
+
+        if (requests.isEmpty()) {
+            throw new IllegalArgumentException("Не найдены запросы с указанными ID");
+        }
+
+        List<ParticipationRequestDto> confirmedRequests = new ArrayList<>();
+        List<ParticipationRequestDto> rejectedRequests = new ArrayList<>();
+
+        for (Request req : requests) {
+            if (!req.getEventId().equals(eventId)) {
+                throw new ConflictException("Запрос не относится к этому событию");
+            }
+
+            if (req.getStatus() != RequestStatus.PENDING) {
+                throw new ConflictException("Можно менять только статус запросов, находящихся в ожидании");
+            }
+
+            if (updateRequestDto.getStatus() == RequestStatus.CONFIRMED) {
+                // Внутри цикла НЕ проверяем лимит снова, только считаем
+                if (event.getParticipantLimit() != 0 && confirmedCount >= event.getParticipantLimit()) {
+                    req.setStatus(RequestStatus.REJECTED);
+                    rejectedRequests.add(requestMapper.toDto(req));
+                } else {
+                    req.setStatus(RequestStatus.CONFIRMED);
+                    confirmedCount++; // Увеличиваем счётчик
                     confirmedRequests.add(requestMapper.toDto(req));
                 }
             } else if (updateRequestDto.getStatus() == RequestStatus.REJECTED) {
