@@ -174,7 +174,6 @@ public class GlobalExceptionHandler {
     public ApiError handleException(Exception e) {
         log.error("Внутренняя ошибка сервера", e);
 
-        // Всегда возвращаем стек-трейс (как просит наставник)
         String stackTrace = getStackTrace(e);
         String message = "Произошла непредвиденная ошибка. Администратор уже уведомлён.\n\n" + stackTrace;
 

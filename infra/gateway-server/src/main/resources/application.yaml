@@ -44,62 +44,66 @@ spring:
           uri: lb://EVENT-SERVICE
           predicates:
             - Path=/users/*/events/**
-          # ????? StripPrefix=1
 
         # 6. Private Requests API - /users/{userId}/requests
         - id: request-service-private-api
           uri: lb://REQUEST-SERVICE
           predicates:
             - Path=/users/*/requests/**
-          # ???????? StripPrefix=1, ?.?. request-service ??????? ???? ??? /users
-          filters:
-            - StripPrefix=1
 
-        # 7. Private Comments API - /users/{userId}/comments
+        # 7. Private Event Requests API - /users/{userId}/events/{eventId}/requests
+        - id: event-request-service-private-api
+          uri: lb://REQUEST-SERVICE
+          predicates:
+            - Path=/users/*/events/*/requests/**
+
+        # 8. Private Comments API - /users/{userId}/comments
         - id: comment-service-private-api
           uri: lb://COMMENT-SERVICE
           predicates:
             - Path=/users/*/comments/**
-          # ???????? StripPrefix=1, ?.?. comment-service ??????? ???? ??? /users
-          filters:
-            - StripPrefix=1
 
-        # 8. Admin Events API - /admin/events
+        # 9. Admin Events API - /admin/events
         - id: event-service-admin-api
           uri: lb://EVENT-SERVICE
           predicates:
             - Path=/admin/events/**
 
-        # 9. Admin Users API - /admin/users
+        # 10. Admin Users API - /admin/users
         - id: user-service-admin-api
           uri: lb://USER-SERVICE
           predicates:
             - Path=/admin/users/**
 
-        # 10. Admin Categories API - /admin/categories
+        # 11. Admin Categories API - /admin/categories
         - id: category-service-admin-api
           uri: lb://EVENT-SERVICE
           predicates:
             - Path=/admin/categories/**
 
-        # 11. Admin Compilations API - /admin/compilations
+        # 12. Admin Compilations API - /admin/compilations
         - id: compilation-service-admin-api
           uri: lb://EVENT-SERVICE
           predicates:
             - Path=/admin/compilations/**
 
-        # 12. Public Users API - /users
+        # 13. Admin Requests API - /admin/requests
+        - id: admin-requests-api
+          uri: lb://REQUEST-SERVICE
+          predicates:
+            - Path=/admin/requests/**
+
+        # 14. Public Users API - /users
         - id: user-service-public-api
           uri: lb://USER-SERVICE
           predicates:
             - Path=/users/**
 
-        # 13. Direct user API - /users/{userId}
+        # 15. Direct user API - /users/{userId}
         - id: user-service-direct-api
           uri: lb://USER-SERVICE
           predicates:
             - Path=/users/{userId}
-        # ????? StripPrefix=1, ?.?. user-service ??????? ?????? ????
 
 eureka:
   client:
