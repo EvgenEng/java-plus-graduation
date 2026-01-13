@@ -31,7 +31,7 @@ public class GlobalExceptionHandler {
         );
     }
 
-    @ExceptionHandler(ConflictException.class)
+    /*@ExceptionHandler(ConflictException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     public ApiError handleConflictException(ConflictException e) {
         log.warn("Конфликт: {}", e.getMessage());
@@ -39,6 +39,22 @@ public class GlobalExceptionHandler {
                 "CONFLICT",
                 "Нарушение бизнес-логики.",
                 e.getMessage(),
+                LocalDateTime.now()
+        );
+    }*/
+    //скорректировал!
+    @ExceptionHandler(ConflictException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiError handleConflictException(ConflictException e) {
+        log.warn("Конфликт: {}", e.getMessage());
+
+        String stackTrace = getStackTrace(e);
+        String message = e.getMessage() + "\n\nStackTrace:\n" + stackTrace;
+
+        return new ApiError(
+                "CONFLICT",
+                "Нарушение бизнес-логики.",
+                message,
                 LocalDateTime.now()
         );
     }
