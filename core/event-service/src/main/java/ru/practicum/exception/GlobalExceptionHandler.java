@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.time.LocalDateTime;
 
 @RestControllerAdvice
@@ -156,7 +158,7 @@ public class GlobalExceptionHandler {
         );
     }
 
-    @ExceptionHandler(Exception.class)
+    /*@ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiError handleException(Exception e) {
         log.error("Внутренняя ошибка сервера", e);
@@ -166,6 +168,29 @@ public class GlobalExceptionHandler {
                 "Произошла непредвиденная ошибка. Администратор уже уведомлён.",
                 LocalDateTime.now()
         );
+    }*/
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ApiError handleException(Exception e) {
+        log.error("Внутренняя ошибка сервера", e);
+
+        // Всегда возвращаем стек-трейс (как просит наставник)
+        String stackTrace = getStackTrace(e);
+        String message = "Произошла непредвиденная ошибка. Администратор уже уведомлён.\n\n" + stackTrace;
+
+        return new ApiError(
+                "INTERNAL_ERROR",
+                "Внутренняя ошибка сервера.",
+                message,
+                LocalDateTime.now()
+        );
+    }
+
+    private String getStackTrace(Exception e) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        e.printStackTrace(pw);
+        return sw.toString();
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
