@@ -171,7 +171,7 @@ public class RequestServiceImpl implements RequestService {
         return requestRepository.countByEventIdAndStatus(eventId, status);
     }
 
-    private EventFullDto getEventOrThrow(Long eventId) {
+    /*private EventFullDto getEventOrThrow(Long eventId) {
         EventFullDto event = eventClient.getEventById(eventId);
         if (event == null) {
             event = eventClient.getPublicEventById(eventId);
@@ -179,6 +179,15 @@ public class RequestServiceImpl implements RequestService {
                 throw new NotFoundException("Event", "id", eventId);
             }
         }
+        return event;
+    }*/
+    private EventFullDto getEventOrThrow(Long eventId) {
+        EventFullDto event = eventClient.getPublicEventById(eventId);
+
+        if (event == null) {
+            throw new NotFoundException("Event", "id", eventId);
+        }
+
         return event;
     }
 }
