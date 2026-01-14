@@ -103,7 +103,7 @@ public class RequestServiceImpl implements RequestService {
         return requestMapper.toDto(requestRepository.save(request));
     }
 
-    @Override
+    /*@Override
     public List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId) {
         EventFullDto event = getEventOrThrow(eventId);
 
@@ -114,6 +114,38 @@ public class RequestServiceImpl implements RequestService {
         return requestRepository.findAllByEventId(eventId).stream()
                 .map(requestMapper::toDto)
                 .collect(Collectors.toList());
+    }*/
+    @Override
+    public List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId) {
+        log.info("getEventRequests вызван: userId={}, eventId={}", userId, eventId);
+
+        try {
+            EventFullDto event = getEventOrThrow(eventId);
+            log.info("Событие найдено: eventId={}, initiator={}", eventId, event.getInitiator());
+
+            // ВАЖНО: Проверка на null!
+            if (event.getInitiator() == null || event.getInitiator().getId() == null) {
+                log.error("У события {} отсутствует информация об инициаторе", eventId);
+                throw new ConflictException("У события отсутствует информация об инициаторе");
+            }
+
+            if (!event.getInitiator().getId().equals(userId)) {
+                log.warn("Пользователь {} не является создателем события {}", userId, eventId);
+                throw new ConflictException("Только создатель может смотреть запросы к событию");
+            }
+
+            List<Request> requests = requestRepository.findAllByEventId(eventId);
+            log.info("Найдено {} запросов для события {}", requests.size(), eventId);
+
+            return requests.stream()
+                    .map(requestMapper::toDto)
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            log.error("Ошибка в getEventRequests: userId={}, eventId={}, error={}, stacktrace: {}",
+                    userId, eventId, e.getMessage(), e);
+            throw e;
+        }
     }
 
     /*@Override
@@ -165,7 +197,7 @@ public class RequestServiceImpl implements RequestService {
 
         return new EventRequestStatusUpdateResultDto(confirmedRequests, rejectedRequests);
     }*/
-    @Override
+    /*@Override
     @Transactional
     public EventRequestStatusUpdateResultDto changeRequestStatus(Long userId, Long eventId,
                                                                  EventRequestStatusUpdateRequestDto updateRequestDto) {
@@ -225,6 +257,111 @@ public class RequestServiceImpl implements RequestService {
         requestRepository.saveAll(requests);
 
         return new EventRequestStatusUpdateResultDto(confirmedRequests, rejectedRequests);
+    }*/
+    @Override
+    @Transactional
+    public EventRequestStatusUpdateResultDto changeRequestStatus(Long userId, Long eventId,
+                                                                 EventRequestStatusUpdateRequestDto updateRequestDto) {
+        log.info("Изменение статуса запросов: userId={}, eventId={}, requestIds={}, status={}",
+                userId, eventId, updateRequestDto.getRequestIds(), updateRequestDto.getStatus());
+
+        try {
+            EventFullDto event = getEventOrThrow(eventId);
+            log.info("Событие найдено: id={}, title={}, initiatorId={}, participantLimit={}",
+                    eventId, event.getTitle(), event.getInitiator() != null ? event.getInitiator().getId() : "null",
+                    event.getParticipantLimit());
+
+            // ВАЖНО: Проверка на null!
+            if (event.getInitiator() == null || event.getInitiator().getId() == null) {
+                log.error("У события {} отсутствует информация об инициаторе", eventId);
+                throw new ConflictException("У события отсутствует информация об инициаторе");
+            }
+
+            if (!event.getInitiator().getId().equals(userId)) {
+                log.warn("Пользователь {} не является создателем события {} (создатель: {})",
+                        userId, eventId, event.getInitiator().getId());
+                throw new ConflictException("Только создатель может менять статус запроса");
+            }
+
+            // Проверка лимита участников ДО обработки запросов
+            Long confirmedCount = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
+            log.info("Текущее количество подтвержденных запросов: {}", confirmedCount);
+
+            if (updateRequestDto.getStatus() == RequestStatus.CONFIRMED
+                    && event.getParticipantLimit() != 0
+                    && confirmedCount >= event.getParticipantLimit()) {
+                log.warn("Достигнут лимит участников: limit={}, confirmed={}",
+                        event.getParticipantLimit(), confirmedCount);
+                throw new ConflictException("Достигнут лимит участников");
+            }
+
+            // Получаем запросы
+            List<Request> requests = requestRepository.findAllById(updateRequestDto.getRequestIds());
+            if (requests.isEmpty()) {
+                log.warn("Не найдены запросы с ID: {}", updateRequestDto.getRequestIds());
+                throw new NotFoundException("Не найдены запросы с указанными ID");
+            }
+
+            log.info("Найдено {} запросов для обработки", requests.size());
+
+            List<ParticipationRequestDto> confirmedRequests = new ArrayList<>();
+            List<ParticipationRequestDto> rejectedRequests = new ArrayList<>();
+
+            // Обрабатываем каждый запрос
+            for (Request request : requests) {
+                log.debug("Обработка запроса: id={}, eventId={}, status={}",
+                        request.getId(), request.getEventId(), request.getStatus());
+
+                if (!request.getEventId().equals(eventId)) {
+                    log.warn("Запрос {} относится к событию {}, а не к {}",
+                            request.getId(), request.getEventId(), eventId);
+                    throw new ConflictException("Запрос с id=" + request.getId() + " не относится к событию " + eventId);
+                }
+
+                if (request.getStatus() != RequestStatus.PENDING) {
+                    log.warn("Запрос {} уже имеет статус {}", request.getId(), request.getStatus());
+                    throw new ConflictException("Запрос с id=" + request.getId() + " уже обработан");
+                }
+
+                if (updateRequestDto.getStatus() == RequestStatus.CONFIRMED) {
+                    // Проверяем лимит для каждого запроса
+                    if (event.getParticipantLimit() == 0 || confirmedCount < event.getParticipantLimit()) {
+                        request.setStatus(RequestStatus.CONFIRMED);
+                        confirmedCount++;
+                        confirmedRequests.add(requestMapper.toDto(request));
+                        log.debug("Запрос {} подтвержден", request.getId());
+                    } else {
+                        request.setStatus(RequestStatus.REJECTED);
+                        rejectedRequests.add(requestMapper.toDto(request));
+                        log.debug("Запрос {} отклонен (достигнут лимит)", request.getId());
+                    }
+                } else {
+                    request.setStatus(RequestStatus.REJECTED);
+                    rejectedRequests.add(requestMapper.toDto(request));
+                    log.debug("Запрос {} отклонен", request.getId());
+                }
+            }
+
+            // Сохраняем изменения
+            requestRepository.saveAll(requests);
+            log.info("Обработка завершена: подтверждено={}, отклонено={}",
+                    confirmedRequests.size(), rejectedRequests.size());
+
+            return EventRequestStatusUpdateResultDto.builder()
+                    .confirmedRequests(confirmedRequests)
+                    .rejectedRequests(rejectedRequests)
+                    .build();
+
+        } catch (ConflictException | NotFoundException e) {
+            // Перебрасываем бизнес-исключения как есть
+            log.warn("Бизнес-исключение в changeRequestStatus: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            // Логируем и перебрасываем все остальные исключения
+            log.error("Непредвиденная ошибка в changeRequestStatus: userId={}, eventId={}, error={}",
+                    userId, eventId, e.getMessage(), e);
+            throw new RuntimeException("Внутренняя ошибка сервера при обработке запросов", e);
+        }
     }
 
     @Override
