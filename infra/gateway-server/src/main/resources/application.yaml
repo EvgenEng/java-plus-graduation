@@ -55,9 +55,7 @@ spring:
         - id: event-request-service-private-api
           uri: lb://REQUEST-SERVICE
           predicates:
-            - Path=/users/{userId}/events/{eventId}/requests/**
-          filters:
-            - SetPath=/users/{userId}/events/{eventId}/requests/{remaining}
+          - Path=/users/{userId}/events/{eventId}/requests
 
         # 8. Private Comments API - /users/{userId}/comments
         - id: comment-service-private-api
