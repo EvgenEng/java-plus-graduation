@@ -49,13 +49,19 @@ spring:
         - id: request-service-private-api
           uri: lb://REQUEST-SERVICE
           predicates:
-            - Path=/users/*/requests/**
+            - Path=/users/{userId}/requests
+            - Method=GET,POST
+          filters:
+            - SetPath=/users/{userId}/requests
 
         # 7. Private Event Requests API - /users/{userId}/events/{eventId}/requests
         - id: event-request-service-private-api
           uri: lb://REQUEST-SERVICE
           predicates:
-            - Path=/users/*/events/*/requests/**
+            - Path=/users/{userId}/events/{eventId}/requests
+            - Method=GET,PATCH
+          filters:
+            - SetPath=/users/{userId}/events/{eventId}/requests
 
         # 8. Private Comments API - /users/{userId}/comments
         - id: comment-service-private-api
@@ -93,17 +99,19 @@ spring:
           predicates:
             - Path=/admin/requests/**
 
-        # 14. Public Users API - /users
-        - id: user-service-public-api
-          uri: lb://USER-SERVICE
-          predicates:
-            - Path=/users/**
-
-        # 15. Direct user API - /users/{userId}
+        # 14. Direct user API - /users/{userId}
         - id: user-service-direct-api
           uri: lb://USER-SERVICE
           predicates:
             - Path=/users/{userId}
+            - Method=GET
+
+        # 15. Public Users API - /users
+        - id: user-service-public-api
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/users/**
+            - Method=GET
 
 eureka:
   client:
