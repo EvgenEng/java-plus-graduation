@@ -15,47 +15,48 @@ spring:
           enabled: true
           lower-case-service-id: true
       routes:
-        # 1. Public Events API - /events
+        # 1. Private Event Requests API - /users/{userId}/events/{eventId}/requests
+        - id: event-request-service-private-api
+          uri: lb://REQUEST-SERVICE
+          predicates:
+            - Path=/users/{userId}/events/{eventId}/requests
+            - Method=GET,PATCH
+
+        # 2. Public Events API - /events
         - id: event-service-public-api
           uri: lb://EVENT-SERVICE
           predicates:
             - Path=/events/**
 
-        # 2. Public Categories API - /categories
+        # 3. Public Categories API - /categories
         - id: category-service-public-api
           uri: lb://EVENT-SERVICE
           predicates:
             - Path=/categories/**
 
-        # 3. Public Compilations API - /compilations
+        # 4. Public Compilations API - /compilations
         - id: compilation-service-public-api
           uri: lb://EVENT-SERVICE
           predicates:
             - Path=/compilations/**
 
-        # 4. Public Statistics API - /stats
+        # 5. Public Statistics API - /stats
         - id: stats-server-public-api
           uri: lb://STATS-SERVER
           predicates:
             - Path=/stats/**
 
-        # 5. Private Events API - /users/{userId}/events
+        # 6. Private Events API - /users/{userId}/events
         - id: event-service-private-api
           uri: lb://EVENT-SERVICE
           predicates:
             - Path=/users/*/events/**
 
-        # 6. Private Requests API - /users/{userId}/requests
+        # 7. Private Requests API - /users/{userId}/requests
         - id: request-service-private-api
           uri: lb://REQUEST-SERVICE
           predicates:
             - Path=/users/{userId}/requests/**
-
-        # 7. Private Event Requests API - /users/{userId}/events/{eventId}/requests
-        - id: event-request-service-private-api
-          uri: lb://REQUEST-SERVICE
-          predicates:
-          - Path=/users/{userId}/events/{eventId}/requests
 
         # 8. Private Comments API - /users/{userId}/comments
         - id: comment-service-private-api
