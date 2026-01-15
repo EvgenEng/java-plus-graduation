@@ -276,69 +276,56 @@ public class RequestServiceImpl implements RequestService {
             // 1. Получаем событие
             EventFullDto event = getEventOrThrow(eventId);
 
-            // 2. ВАЖНО: Проверка инициатора события
-            if (event.getInitiator() == null) {
-                log.error("У события {} initiator = null", eventId);
-                throw new ConflictException("Событие не имеет инициатора");
+            // 2. Проверка инициатора события
+            if (!event.getInitiator().getId().equals(userId)) {
+                throw new ConflictException("Только создатель события может менять статус заявок");
             }
 
-            Long eventInitiatorId = event.getInitiator().getId();
-            if (eventInitiatorId == null) {
-                log.error("У события {} initiator.getId() = null", eventId);
-                throw new ConflictException("Инициатор события не имеет ID");
-            }
-
-            if (!eventInitiatorId.equals(userId)) {
-                log.warn("Пользователь {} не является создателем события {}", userId, eventInitiatorId);
-                throw new ConflictException("Только создатель может менять статус запроса");
-            }
-
-            // 3. Проверяем лимит участников ПЕРЕД обработкой
-            Long confirmedCount = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
-
-            // ВАЖНО: Проверяем только если пытаемся подтвердить
-            if (updateRequestDto.getStatus() == RequestStatus.CONFIRMED
-                    && event.getParticipantLimit() != 0
-                    && confirmedCount >= event.getParticipantLimit()) {
-                log.warn("Достигнут лимит участников: limit={}, confirmed={}",
-                        event.getParticipantLimit(), confirmedCount);
-                throw new ConflictException("Достигнут лимит участников");
-            }
-
-            // 4. Получаем запросы
+            // 3. Получаем запросы
             List<Request> requests = requestRepository.findAllById(updateRequestDto.getRequestIds());
             if (requests.isEmpty()) {
                 throw new NotFoundException("Не найдены запросы с указанными ID");
             }
 
-            // 5. Обрабатываем запросы
+            // 4. Проверяем лимит участников ДЛЯ КАЖДОГО ЗАПРОСА
+            long confirmedCount = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
+            int participantLimit = event.getParticipantLimit();
+
+            log.info("Лимит: {}, Подтверждено: {}", participantLimit, confirmedCount);
+
             List<ParticipationRequestDto> confirmedRequests = new ArrayList<>();
             List<ParticipationRequestDto> rejectedRequests = new ArrayList<>();
 
+            // 5. Обработка каждого запроса с проверкой лимита
             for (Request request : requests) {
-                // Проверка: запрос относится к событию
+                // Проверка принадлежности к событию
                 if (!eventId.equals(request.getEventId())) {
                     throw new ConflictException("Запрос не относится к этому событию");
                 }
 
-                // Проверка: запрос в статусе PENDING
+                // Проверка статуса
                 if (request.getStatus() != RequestStatus.PENDING) {
                     throw new ConflictException("Запрос уже обработан");
                 }
 
-                // Обработка в зависимости от желаемого статуса
+                // Подтверждение с проверкой лимита для каждого
                 if (updateRequestDto.getStatus() == RequestStatus.CONFIRMED) {
-                    // Проверяем лимит для каждого запроса
-                    if (event.getParticipantLimit() == 0 || confirmedCount < event.getParticipantLimit()) {
+                    // ВАЖНО: лимит 0 = безлимитно!
+                    if (participantLimit == 0) {
+                        request.setStatus(RequestStatus.CONFIRMED);
+                        confirmedCount++;
+                        confirmedRequests.add(requestMapper.toDto(request));
+                    } else if (confirmedCount < participantLimit) {
                         request.setStatus(RequestStatus.CONFIRMED);
                         confirmedCount++;
                         confirmedRequests.add(requestMapper.toDto(request));
                     } else {
-                        // Лимит достигнут - отклоняем
+                        // Лимит достигнут - отклоняем ОСТАВШИЕСЯ
                         request.setStatus(RequestStatus.REJECTED);
                         rejectedRequests.add(requestMapper.toDto(request));
                     }
                 } else if (updateRequestDto.getStatus() == RequestStatus.REJECTED) {
+                    // Явное отклонение
                     request.setStatus(RequestStatus.REJECTED);
                     rejectedRequests.add(requestMapper.toDto(request));
                 }
@@ -356,7 +343,6 @@ public class RequestServiceImpl implements RequestService {
             // Перебрасываем как есть
             throw e;
         } catch (Exception e) {
-            // Логируем и оборачиваем
             log.error("Ошибка в changeRequestStatus: ", e);
             throw new RuntimeException("Внутренняя ошибка сервера", e);
         }

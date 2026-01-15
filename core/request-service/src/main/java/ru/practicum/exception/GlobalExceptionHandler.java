@@ -48,12 +48,15 @@ public class GlobalExceptionHandler {
     public ApiError handleConflictException(ConflictException e) {
         log.warn("Конфликт: {}", e.getMessage());
 
-        String stackTrace = getStackTrace(e);
-        String message = e.getMessage() + "\n\nStackTrace:\n" + stackTrace;
+        String message = e.getMessage();
+
+        if (message != null && (message.contains("лимит") || message.contains("Достигнут"))) {
+            message = "Достигнут лимит участников";
+        }
 
         return new ApiError(
                 "CONFLICT",
-                "Нарушение бизнес-логики.",
+                "For the requested operation the conditions are not met.", // ← ВЗЯТО ИЗ СПЕЦИФИКАЦИИ!
                 message,
                 LocalDateTime.now()
         );
