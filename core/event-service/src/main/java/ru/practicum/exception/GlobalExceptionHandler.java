@@ -158,17 +158,6 @@ public class GlobalExceptionHandler {
         );
     }
 
-    /*@ExceptionHandler(Exception.class)
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public ApiError handleException(Exception e) {
-        log.error("Внутренняя ошибка сервера", e);
-        return new ApiError(
-                "INTERNAL_ERROR",
-                "Внутренняя ошибка сервера.",
-                "Произошла непредвиденная ошибка. Администратор уже уведомлён.",
-                LocalDateTime.now()
-        );
-    }*/
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiError handleException(Exception e) {

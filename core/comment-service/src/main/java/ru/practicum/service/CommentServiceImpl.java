@@ -41,16 +41,14 @@ public class CommentServiceImpl implements CommentService {
     @Override
     @Transactional
     public CommentDto createComment(Long userId, Long eventId, NewCommentDto newCommentDto) {
-        getUserOrThrow(userId);
-        EventFullDto event = getEventOrThrow(eventId);
+        // 1. ВНЕШНИЕ ВЫЗОВЫ ДО ТРАНЗАКЦИИ
+        validateUserAndEvent(userId, eventId);
 
-        if (event.getState() != EventState.PUBLISHED) {
-            throw new ConflictException("Нельзя комментировать неопубликованное событие");
-        }
-
+        // 2. ТОЛЬКО РАБОТА С БД (транзакция)
         Comment comment = commentMapper.toComment(newCommentDto, userId, eventId);
-
         Comment saved = commentRepository.save(comment);
+
+        // 3. Подготовка DTO
         Map<Long, UserShortDto> usersMap = getUserShortDtoMap(Set.of(userId));
         return buildCommentDto(saved, usersMap);
     }
@@ -58,15 +56,25 @@ public class CommentServiceImpl implements CommentService {
     @Override
     @Transactional
     public CommentDto updateCommentByUser(Long userId, Long commentId, UpdateCommentDto dto) {
-        Comment comment = getCommentOrThrow(commentId, userId);
+        // 1. ВНЕШНИЕ ВЫЗОВЫ ДО ТРАНЗАКЦИИ
+        getUserOrThrow(userId); // Проверяем что пользователь существует
+
+        // 2. ТОЛЬКО РАБОТА С БД
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new NotFoundException("Comment", "id", commentId));
+
+        if (!comment.getAuthorId().equals(userId)) {
+            throw new ConflictException("Только автор может редактировать комментарий");
+        }
 
         if (comment.getStatus() != CommentStatus.PENDING) {
             throw new ConflictException("Можно редактировать только комментарии в статусе PENDING");
         }
 
         commentMapper.patchFromDto(dto, comment);
-
         Comment saved = commentRepository.save(comment);
+
+        // 3. Подготовка DTO
         Map<Long, UserShortDto> usersMap = getUserShortDtoMap(Set.of(userId));
         return buildCommentDto(saved, usersMap);
     }
@@ -74,13 +82,24 @@ public class CommentServiceImpl implements CommentService {
     @Override
     @Transactional
     public void deleteCommentByUser(Long userId, Long commentId) {
-        Comment comment = getCommentOrThrow(commentId, userId);
+        // 1. ВНЕШНИЕ ВЫЗОВЫ ДО ТРАНЗАКЦИИ
+        getUserOrThrow(userId); // Проверяем что пользователь существует
+
+        // 2. ТОЛЬКО РАБОТА С БД
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new NotFoundException("Comment", "id", commentId));
+
+        if (!comment.getAuthorId().equals(userId)) {
+            throw new ConflictException("Только автор может удалить комментарий");
+        }
+
         commentRepository.delete(comment);
     }
 
     @Override
     public List<CommentDto> getCommentsByEvent(Long eventId, int from, int size) {
         getEventOrThrow(eventId);
+
         List<Comment> comments = commentRepository.findPublishedByEvent(eventId,
                 PageRequest.of(from / size, size));
         Set<Long> authorIds = comments.stream()
@@ -100,9 +119,7 @@ public class CommentServiceImpl implements CommentService {
                                         LocalDateTime start,
                                         LocalDateTime end,
                                         int from, int size) {
-
         Pageable pageable = PageRequest.of(from / size, size);
-
         Page<Comment> result;
 
         if (start == null && end == null) {
@@ -154,8 +171,8 @@ public class CommentServiceImpl implements CommentService {
         }
 
         commentMapper.patchFromAdminDto(dto, comment);
-
         Comment saved = commentRepository.save(comment);
+
         Map<Long, UserShortDto> usersMap = getUserShortDtoMap(Set.of(comment.getAuthorId()));
         return buildCommentDto(saved, usersMap);
     }
@@ -168,6 +185,15 @@ public class CommentServiceImpl implements CommentService {
         }
 
         commentRepository.deleteById(commentId);
+    }
+
+    private void validateUserAndEvent(Long userId, Long eventId) {
+        getUserOrThrow(userId);
+        EventFullDto event = getEventOrThrow(eventId);
+
+        if (event.getState() != EventState.PUBLISHED) {
+            throw new ConflictException("Нельзя комментировать неопубликованное событие");
+        }
     }
 
     private void getUserOrThrow(Long userId) {
@@ -186,11 +212,6 @@ public class CommentServiceImpl implements CommentService {
             }
         }
         return event;
-    }
-
-    private Comment getCommentOrThrow(Long commentId, Long userId) {
-        return commentRepository.findByIdAndAuthorId(commentId, userId)
-                .orElseThrow(() -> new NotFoundException("Comment", "id", commentId));
     }
 
     private CommentDto buildCommentDto(Comment comment, Map<Long, UserShortDto> usersMap) {
