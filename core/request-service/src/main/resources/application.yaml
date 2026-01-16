@@ -9,17 +9,9 @@ spring:
       retry:
         useRandomPolicy: true
         max-interval: 6000
-    discovery:
-      enabled: true
-      serviceId: config-server
-  datasource:
-    driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://localhost:5435/ewm_request_db
-    username: ewm_user
-    password: ewm_password
-    hikari:
-      connection-timeout: 30000
-      maximum-pool-size: 10
+      discovery:
+        enabled: true
+        serviceId: config-server
 
 eureka:
   client:
