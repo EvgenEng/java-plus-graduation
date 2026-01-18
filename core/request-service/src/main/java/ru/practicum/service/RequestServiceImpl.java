@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.client.StatsClient;
 import ru.practicum.client.event.EventClient;
 import ru.practicum.client.user.UserClient;
 import ru.practicum.dto.event.EventFullDto;
@@ -34,6 +35,7 @@ public class RequestServiceImpl implements RequestService {
     private final UserClient userClient;
     private final EventClient eventClient;
     private final RequestMapper requestMapper;
+    private final StatsClient statsClient;
 
     @Override
     public List<ParticipationRequestDto> getUserRequests(Long userId) {
@@ -86,6 +88,15 @@ public class RequestServiceImpl implements RequestService {
         request.setStatus(status);
 
         Request saved = requestRepository.save(request);
+
+        if (status == RequestStatus.CONFIRMED) {
+            try {
+                statsClient.recordRegister(userId, eventId);
+            } catch (Exception e) {
+                log.warn("Не удалось отправить действие регистрации: {}", e.getMessage());
+            }
+        }
+
         return requestMapper.toDto(saved);
     }
 
@@ -120,51 +131,45 @@ public class RequestServiceImpl implements RequestService {
     @Transactional
     public EventRequestStatusUpdateResultDto changeRequestStatus(Long userId, Long eventId,
                                                                  EventRequestStatusUpdateRequestDto updateRequestDto) {
-        // 1. Получаем событие
         EventFullDto event = getEventOrThrow(eventId);
 
-        // 2. Проверка инициатора
         if (!event.getInitiator().getId().equals(userId)) {
             throw new ConflictException("Только создатель может менять статус запроса");
         }
 
-        // 3. Получаем текущее количество подтвержденных
-        long confirmedCount = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
-
-        // 4. Проверяем лимит ТОЛЬКО если пытаемся подтвердить
-        if (updateRequestDto.getStatus() == RequestStatus.CONFIRMED
-                && event.getParticipantLimit() != 0
-                && confirmedCount >= event.getParticipantLimit()) {
+        if (event.getParticipantLimit() != 0 &&
+                requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED)
+                        >= event.getParticipantLimit()) {
             throw new ConflictException("Достигнут лимит участников");
         }
 
-        // 5. Получаем запросы
         List<Request> requests = requestRepository.findAllById(updateRequestDto.getRequestIds());
-        if (requests.isEmpty()) {
-            throw new NotFoundException("Не найдены запросы с указанными ID");
-        }
-
         List<ParticipationRequestDto> confirmedRequests = new ArrayList<>();
         List<ParticipationRequestDto> rejectedRequests = new ArrayList<>();
 
-        // 6. Обрабатываем каждый запрос
         for (Request req : requests) {
             if (!req.getEventId().equals(eventId)) {
                 throw new ConflictException("Запрос не относится к этому событию");
             }
 
             if (req.getStatus() != RequestStatus.PENDING) {
-                throw new ConflictException("Запрос уже обработан");
+                throw new ConflictException("Можно менять только статус запросов, находящихся в ожидании");
             }
 
             if (updateRequestDto.getStatus() == RequestStatus.CONFIRMED) {
-                if (event.getParticipantLimit() == 0 || confirmedCount < event.getParticipantLimit()) {
-                    req.setStatus(RequestStatus.CONFIRMED);
-                    confirmedCount++;
-                    confirmedRequests.add(requestMapper.toDto(req));
-                } else {
+                if (event.getParticipantLimit() != 0 &&
+                        requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED)
+                                >= event.getParticipantLimit()) {
                     req.setStatus(RequestStatus.REJECTED);
                     rejectedRequests.add(requestMapper.toDto(req));
+                } else {
+                    req.setStatus(RequestStatus.CONFIRMED);
+                    confirmedRequests.add(requestMapper.toDto(req));
+                    try {
+                        statsClient.recordRegister(req.getRequesterId(), eventId);
+                    } catch (Exception e) {
+                        log.warn("Не удалось отправить действие регистрации: {}", e.getMessage());
+                    }
                 }
             } else if (updateRequestDto.getStatus() == RequestStatus.REJECTED) {
                 req.setStatus(RequestStatus.REJECTED);
@@ -174,10 +179,7 @@ public class RequestServiceImpl implements RequestService {
 
         requestRepository.saveAll(requests);
 
-        return EventRequestStatusUpdateResultDto.builder()
-                .confirmedRequests(confirmedRequests)
-                .rejectedRequests(rejectedRequests)
-                .build();
+        return new EventRequestStatusUpdateResultDto(confirmedRequests, rejectedRequests);
     }
 
     @Override
@@ -194,5 +196,13 @@ public class RequestServiceImpl implements RequestService {
             }
         }
         return event;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Boolean hasConfirmedRequest(Long userId, Long eventId) {
+        return requestRepository.findByEventIdAndStatus(eventId, RequestStatus.CONFIRMED)
+                .stream()
+                .anyMatch(request -> request.getRequesterId().equals(userId));
     }
 }

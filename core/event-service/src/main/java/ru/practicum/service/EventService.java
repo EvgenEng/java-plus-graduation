@@ -6,7 +6,6 @@ import ru.practicum.dto.event.EventShortDto;
 import ru.practicum.dto.event.NewEventDto;
 import ru.practicum.dto.event.UpdateEventAdminRequestDto;
 import ru.practicum.dto.event.UpdateEventUserRequestDto;
-import ru.practicum.model.EventState;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,7 +23,7 @@ public interface EventService {
 
     //admin
     List<EventFullDto> searchAdmin(List<Long> users,
-                                   List<EventState> states,
+                                   List<ru.practicum.model.EventState> states,
                                    List<Long> categories,
                                    LocalDateTime rangeStart,
                                    LocalDateTime rangeEnd,
@@ -47,5 +46,9 @@ public interface EventService {
                                      int size,
                                      HttpServletRequest request);
 
-    EventFullDto getPublicEvent(Long eventId, HttpServletRequest request);
+    EventFullDto getPublicEvent(Long eventId, Long userId, HttpServletRequest request);
+
+    void likeEvent(Long userId, Long eventId);
+
+    List<EventShortDto> getRecommendations(Long userId, Integer maxResults);
 }
