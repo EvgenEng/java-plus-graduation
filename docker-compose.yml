@@ -1,71 +1,90 @@
 services:
-  # Базы данных (оставляем как есть)
   stats-db:
     image: postgres:16.1
-    # ... существующие настройки
+    container_name: ewm-stats-db-compose
+    ports:
+      - "6543:5432"
+    environment:
+      POSTGRES_USER: stat_user
+      POSTGRES_PASSWORD: stat_password
+      POSTGRES_DB: ewm_stats_db
+    volumes:
+      - ./stats/stats-server/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -p 5432" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
-  ewm-db:
+  user-db:
     image: postgres:16.1
-    # ... существующие настройки
-
-  # Сервис обнаружения (Eureka)
-  discovery-server:
-    build: ./infra/discovery-server
-    image: ewm-discovery-server
-    container_name: "ewm-discovery-server"
+    container_name: ewm-user-db-compose
     ports:
-      - "8761:8761"
-    depends_on:
-      - stats-db
-      - ewm-db
-
-  # Сервер конфигураций (Native - конфиги внутри проекта)
-  config-server:
-    build: ./infra/config-server
-    image: ewm-config-server
-    container_name: "ewm-config-server"
-    ports:
-      - "8888:8888"
-    depends_on:
-      - discovery-server
-
-  # API Gateway
-  gateway-server:
-    build: ./infra/gateway-server
-    image: ewm-gateway-server
-    container_name: "ewm-gateway-server"
-    ports:
-      - "8080:8080"
-    depends_on:
-      - config-server
-      - discovery-server
+      - "5433:5432"
     environment:
-      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      POSTGRES_USER: ewm_user
+      POSTGRES_PASSWORD: ewm_password
+      POSTGRES_DB: ewm_user_db
+    volumes:
+      - ./core/user-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -p 5432" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
-  # Сервис статистики
-  stats-server:
-    build: ./stats/stats-server
-    image: ewm-stats-server
-    container_name: "ewm-stats-server"
+  event-db:
+    image: postgres:16.1
+    container_name: ewm-event-db-compose
     ports:
-      - "9090:9090"
-    depends_on:
-      - config-server
-      - discovery-server
-      - stats-db
+      - "5434:5432"
     environment:
-      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      POSTGRES_USER: ewm_user
+      POSTGRES_PASSWORD: ewm_password
+      POSTGRES_DB: ewm_event_db
+    volumes:
+      - ./core/event-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -p 5432" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
-  # Основной сервис
-  ewm-service:
-    build: ./core/main-service
-    image: ewm-main-service
-    container_name: "ewm-main-service"
+  request-db:
+    image: postgres:16.1
+    container_name: ewm-request-db-compose
     ports:
-      - "8081:8081"
-    depends_on:
-      - config-server
-      - discovery-server
-      - ewm-db
+      - "5435:5432"
     environment:
-      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      POSTGRES_USER: ewm_user
+      POSTGRES_PASSWORD: ewm_password
+      POSTGRES_DB: ewm_request_db
+    volumes:
+      - ./core/request-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -p 5432" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  comment-db:
+    image: postgres:16.1
+    container_name: ewm-comment-db-compose
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_USER: ewm_user
+      POSTGRES_PASSWORD: ewm_password
+      POSTGRES_DB: ewm_comment_db
+    volumes:
+      - ./core/comment-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -p 5432" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
