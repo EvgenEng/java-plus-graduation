@@ -11,8 +11,8 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.springframework.stereotype.Component;
-import ru.practicum.ewm.stat.avro.EventSimilarityAvro;
-import ru.practicum.ewm.stat.avro.UserActionAvro;
+import ru.practicum.ewm.stats.avro.EventSimilarityAvro;
+import ru.practicum.ewm.stats.avro.UserActionAvro;
 import ru.practicum.kafka.KafkaConfig;
 import ru.practicum.kafka.KafkaTopic;
 import ru.practicum.service.SimilarityService;
@@ -73,7 +73,8 @@ public class AggregatorStarter {
                     }
                 }
             }
-        } catch (WakeupException ignored) {
+        } catch (WakeupException e) {
+            log.info("Consumer получил сигнал WakeupException, завершение работы: {}", e.getMessage());
         } catch (Exception e) {
             log.error("Ошибка обработки user actions", e);
         } finally {

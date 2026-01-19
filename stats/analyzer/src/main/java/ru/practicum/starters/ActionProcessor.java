@@ -6,7 +6,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.errors.WakeupException;
 import org.springframework.stereotype.Component;
-import ru.practicum.ewm.stat.avro.UserActionAvro;
+import ru.practicum.ewm.stats.avro.UserActionAvro;
 import ru.practicum.kafka.KafkaConfig;
 import ru.practicum.kafka.KafkaTopic;
 import ru.practicum.model.ActionType;
@@ -61,7 +61,8 @@ public class ActionProcessor implements Runnable {
                 });
             }
 
-        } catch (WakeupException ignored) {
+        } catch (WakeupException e) {
+            log.info("ActionProcessor получил сигнал WakeupException, завершение работы: {}", e.getMessage());
         } catch (Exception e) {
             log.error("Ошибка отправки сообщений", e);
         } finally {
