@@ -1,4 +1,3 @@
-
 package ru.practicum.dto.event;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -31,6 +30,6 @@ public class EventShortDto {
     UserShortDto initiator;
     Boolean paid;
     String title;
-    Long views;
+    Double rating;
 
 }
